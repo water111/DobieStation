@@ -24,7 +24,6 @@ ifstream::pos_type filesize(const char* filename)
 
 EmuWindow::EmuWindow(QWidget *parent) : QMainWindow(parent)
 {
-    old_frametime = chrono::system_clock::now();
     old_update_time = chrono::system_clock::now();
     framerate_avg = 0.0;
     scale_factor = 1;
@@ -266,6 +265,12 @@ void EmuWindow::create_menu()
     connect(frame_action, &QAction::triggered, this,
         [this]() { this->emuthread.frame_advance ^= true; });
     options_menu->addAction(frame_action);
+
+    show_debugger_action = new QAction(tr("&Show Debugger"), this);
+    connect(show_debugger_action, &QAction::triggered, this, &EmuWindow::show_debugger);
+
+    debug_menu = menuBar()->addMenu(tr("&Debug"));
+    debug_menu->addAction(show_debugger_action);
 }
 
 void EmuWindow::draw_frame(uint32_t *buffer, int inner_w, int inner_h, int final_w, int final_h)
@@ -294,8 +299,6 @@ void EmuWindow::paintEvent(QPaintEvent *event)
     event->accept();
     QPainter painter(this);
 
-    printf("Draw image!\n");
-
     if (menuBar()->isNativeMenuBar())
         painter.drawPixmap(0, 0, QPixmap::fromImage(final_image));
     else
@@ -305,6 +308,7 @@ void EmuWindow::paintEvent(QPaintEvent *event)
 void EmuWindow::closeEvent(QCloseEvent *event)
 {
     emit shutdown();
+    debug.close();
     event->accept();
 }
 
@@ -486,4 +490,10 @@ void EmuWindow::save_state()
     if (!emuthread.save_state(path.c_str()))
         printf("Failed to save %s\n", path.c_str());
     emuthread.unpause(PAUSE_EVENT::FILE_DIALOG);
+}
+
+void EmuWindow::show_debugger()
+{
+    emuthread.pause(PAUSE_EVENT::DEBUG_BREAK);
+    debug.show();
 }

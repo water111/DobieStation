@@ -1186,7 +1186,6 @@ string disasm_fpu_c_le_s(uint32_t instruction)
 
 string disasm_cop_bc1(uint32_t instruction, uint32_t instr_addr)
 {
-
     stringstream output;
     string opcode = "";
     const static char* ops[] = {"bc1f", "bc1t", "bc1fl", "bc1tl"};

@@ -208,7 +208,6 @@ void EmotionInterpreter::regimm(EmotionEngine &cpu, uint32_t instruction)
     }
 }
 
-
 void EmotionInterpreter::bltz(EmotionEngine &cpu, uint32_t instruction)
 {
     int32_t offset = (int16_t)(instruction & 0xFFFF);

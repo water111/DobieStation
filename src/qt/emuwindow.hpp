@@ -5,6 +5,7 @@
 #include <QMainWindow>
 #include <QPaintEvent>
 
+#include "debugwindow.hpp"
 #include "emuthread.hpp"
 
 #include "../qt/settings.hpp"
@@ -14,23 +15,24 @@ class EmuWindow : public QMainWindow
 {
     Q_OBJECT
     private:
+        DebugWindow debug;
         EmuThread emuthread;
         std::string title;
         std::string ROM_path;
         QImage final_image;
-        std::chrono::system_clock::time_point old_frametime;
         std::chrono::system_clock::time_point old_update_time;
         double framerate_avg;
 
         QMenu* file_menu;
         QMenu* options_menu;
+        QMenu* debug_menu;
         QAction* load_rom_action;
         QAction* load_bios_action;
         QAction* load_state_action;
         QAction* save_state_action;
         QAction* exit_action;
+        QAction* show_debugger_action;
         int scale_factor;
-
     public:
         explicit EmuWindow(QWidget *parent = nullptr);
         int init(int argc, char** argv);
@@ -43,7 +45,6 @@ class EmuWindow : public QMainWindow
         void closeEvent(QCloseEvent *event) override;
         void keyPressEvent(QKeyEvent *event) override;
         void keyReleaseEvent(QKeyEvent *event) override;
-
     protected:
     #ifndef QT_NO_CONTEXTMENU
         void contextMenuEvent(QContextMenuEvent* event) override;
@@ -60,6 +61,7 @@ class EmuWindow : public QMainWindow
         void open_file_skip();
         void load_state();
         void save_state();
+        void show_debugger();
         void emu_error(QString err);
         void emu_nonfatal_error(QString err);
 };

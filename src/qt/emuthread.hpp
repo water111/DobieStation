@@ -16,6 +16,7 @@ enum PAUSE_EVENT
     FILE_DIALOG,
     MESSAGE_BOX,
     FRAME_ADVANCE,
+    DEBUG_BREAK
 };
 
 class EmuThread : public QThread
