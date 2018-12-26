@@ -19,6 +19,11 @@ void EmuThread::reset()
     e.reset();
 }
 
+Emulator* EmuThread::get_e()
+{
+    return &e;
+}
+
 void EmuThread::set_skip_BIOS_hack(SKIP_HACK skip)
 {
     load_mutex.lock();
@@ -209,6 +214,12 @@ void EmuThread::run()
                 printf("Fatal emulation error occurred, stopping execution\n%s\n", e.what());
                 emit emu_error(QString(e.what()));
                 pause(PAUSE_EVENT::GAME_NOT_LOADED);
+            }
+            catch (breakpoint_exception &e)
+            {
+                printf("[Debugger] Breakpoint hit at $%08X\n", e.addr);
+                pause(PAUSE_EVENT::DEBUG_BREAK);
+                emit emu_breakpoint(e.addr);
             }
         }
     }

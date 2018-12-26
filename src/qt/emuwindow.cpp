@@ -45,6 +45,8 @@ EmuWindow::EmuWindow(QWidget *parent) : QMainWindow(parent)
 
     create_menu();
 
+    debug.set_e(emuthread.get_e());
+
     connect(this, SIGNAL(shutdown()), &emuthread, SLOT(shutdown()));
     connect(this, SIGNAL(press_key(PAD_BUTTON)), &emuthread, SLOT(press_key(PAD_BUTTON)));
     connect(this, SIGNAL(release_key(PAD_BUTTON)), &emuthread, SLOT(release_key(PAD_BUTTON)));
@@ -53,6 +55,7 @@ EmuWindow::EmuWindow(QWidget *parent) : QMainWindow(parent)
     connect(&emuthread, SIGNAL(update_FPS(int)), this, SLOT(update_FPS(int)));
     connect(&emuthread, SIGNAL(emu_error(QString)), this, SLOT(emu_error(QString)));
     connect(&emuthread, SIGNAL(emu_nonfatal_error(QString)), this, SLOT(emu_nonfatal_error(QString)));
+    connect(&emuthread, SIGNAL(emu_breakpoint(unsigned int)), this, SLOT(emu_breakpoint(unsigned int)));
     emuthread.pause(PAUSE_EVENT::GAME_NOT_LOADED);
 
     emuthread.reset();
@@ -359,6 +362,9 @@ void EmuWindow::keyPressEvent(QKeyEvent *event)
         case Qt::Key_F1:
             emuthread.gsdump_single_frame();
             break;
+        case Qt::Key_D:
+            debug.add_instr_breakpoint_ee(0x80000180);
+            break;
     }
 }
 
@@ -443,6 +449,13 @@ void EmuWindow::emu_nonfatal_error(QString err)
     msgBox.setDefaultButton(QMessageBox::Ok);
     msgBox.exec();
     emuthread.unpause(MESSAGE_BOX);
+}
+
+void EmuWindow::emu_breakpoint(unsigned int addr)
+{
+    debug.set_cursor(addr);
+    debug.refresh();
+    debug.show();
 }
 
 #ifndef QT_NO_CONTEXTMENU

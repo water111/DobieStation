@@ -2,6 +2,11 @@
 #include <cstdarg>
 #include <string>
 
+void Errors::breakpoint(uint32_t addr)
+{
+    throw breakpoint_exception(addr);
+}
+
 void Errors::die(const char* format, ...)
 {
     //Display a message box and forcibly terminate emulation

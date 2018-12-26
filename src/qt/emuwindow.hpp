@@ -64,6 +64,7 @@ class EmuWindow : public QMainWindow
         void show_debugger();
         void emu_error(QString err);
         void emu_nonfatal_error(QString err);
+        void emu_breakpoint(unsigned int addr);
 };
 
 #endif // EMUWINDOW_HPP

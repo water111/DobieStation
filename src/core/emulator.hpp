@@ -1,6 +1,7 @@
 #ifndef EMULATOR_HPP
 #define EMULATOR_HPP
 #include <fstream>
+#include <vector>
 
 #include "ee/dmac.hpp"
 #include "ee/emotion.hpp"
@@ -31,6 +32,21 @@ enum SKIP_HACK
     LOAD_DISC
 };
 
+//For the EE and IOP
+struct Breakpoint_CPU
+{
+    uint32_t addr;
+};
+
+//All info a debugger needs access to
+struct DebugInfo
+{
+    EmotionEngine* ee;
+    std::vector<Breakpoint_CPU> ee_breakpoints;
+
+    uint32_t ee_pc;
+};
+
 class Emulator
 {
     private:
@@ -41,7 +57,7 @@ class Emulator
         Cop1 fpu;
         CDVD_Drive cdvd;
         DMAC dmac;
-        EmotionEngine cpu;
+        EmotionEngine ee;
         EmotionTiming timers;
         Gamepad pad;
         GraphicsSynthesizer gs;
@@ -86,6 +102,8 @@ class Emulator
 
         uint8_t* ELF_file;
         uint32_t ELF_size;
+
+        DebugInfo debug_info;
 
         void iop_IRQ_check(uint32_t new_stat, uint32_t new_mask);
     public:
@@ -144,6 +162,12 @@ class Emulator
 
         void test_iop();
         GraphicsSynthesizer& get_gs();//used for gs dumps
+
+        DebugInfo* get_debug_info();
+
+        void add_instr_breakpoint_ee(uint32_t addr);
+
+        void remove_instr_breakpoint_ee(uint32_t addr);
 };
 
 #endif // EMULATOR_HPP

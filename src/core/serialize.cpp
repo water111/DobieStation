@@ -76,7 +76,7 @@ void Emulator::load_state(const char *file_name)
     state.read((char*)scratchpad, 1024 * 16);
 
     //CPUs
-    cpu.load_state(state);
+    ee.load_state(state);
     cp0.load_state(state);
     fpu.load_state(state);
     iop.load_state(state);
@@ -147,7 +147,7 @@ void Emulator::save_state(const char *file_name)
     state.write((char*)scratchpad, 1024 * 16);
 
     //CPUs
-    cpu.save_state(state);
+    ee.save_state(state);
     cp0.save_state(state);
     fpu.save_state(state);
     iop.save_state(state);

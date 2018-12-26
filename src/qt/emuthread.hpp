@@ -34,6 +34,7 @@ class EmuThread : public QThread
         void gsdump_run();
     public:
         EmuThread();
+        Emulator* get_e();
 
         void reset();
 
@@ -55,6 +56,7 @@ class EmuThread : public QThread
         void update_FPS(int FPS);
         void emu_error(QString err);
         void emu_nonfatal_error(QString err);
+        void emu_breakpoint(unsigned int addr);
     public slots:
         void shutdown();
         void press_key(PAD_BUTTON button);

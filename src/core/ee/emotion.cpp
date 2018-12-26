@@ -152,6 +152,13 @@ int EmotionEngine::run(int cycles_to_run)
                         int1();
                 }
             }
+
+            DebugInfo* info = e->get_debug_info();
+            for (int i = 0; i < info->ee_breakpoints.size(); i++)
+            {
+                if (PC == info->ee_breakpoints[i].addr)
+                    Errors::breakpoint(PC);
+            }
         }
     }
 
