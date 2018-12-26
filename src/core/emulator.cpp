@@ -125,6 +125,53 @@ void Emulator::run()
     timers.gate(true, false);
 }
 
+//Only intended to be used for debugging
+void Emulator::step()
+{
+    ee.run(1);
+    instructions_run++;
+    dmac.run(1);
+    timers.run(1);
+    ipu.run();
+    vif0.update(1);
+    vif1.update(1);
+    vu0.run(1);
+    vu1.run(1);
+    iop_timers.run(1);
+    iop_dma.run(1);
+    iop.run(1);
+    if (iop_i_ctrl_delay)
+    {
+        iop_i_ctrl_delay--;
+        if (!iop_i_ctrl_delay)
+            iop.interrupt_check(IOP_I_CTRL && (IOP_I_MASK & IOP_I_STAT));
+    }
+    spu.update(1);
+    spu2.update(1);
+    cdvd.update(1);
+    if (!VBLANK_sent && instructions_run >= VBLANK_START)
+    {
+        VBLANK_sent = true;
+        gs.set_VBLANK(true);
+        timers.gate(true, true);
+        cdvd.vsync();
+        //ee.set_disassembly(frames == 263);
+        printf("VSYNC FRAMES: %d\n", frames);
+        gs.assert_VSYNC();
+        frames++;
+        iop_request_IRQ(0);
+        gs.render_CRT();
+    }
+
+    if (instructions_run >= CYCLES_PER_FRAME)
+    {
+        instructions_run -= CYCLES_PER_FRAME;
+        iop_request_IRQ(11);
+        gs.set_VBLANK(false);
+        timers.gate(true, false);
+    }
+}
+
 void Emulator::reset()
 {
     save_requested = false;

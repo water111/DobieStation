@@ -508,5 +508,6 @@ void EmuWindow::save_state()
 void EmuWindow::show_debugger()
 {
     emuthread.pause(PAUSE_EVENT::DEBUG_BREAK);
+    debug.refresh();
     debug.show();
 }

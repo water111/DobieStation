@@ -110,6 +110,7 @@ class Emulator
         Emulator();
         ~Emulator();
         void run();
+        void step();
         void reset();
         void press_button(PAD_BUTTON button);
         void release_button(PAD_BUTTON button);
