@@ -47,6 +47,8 @@ EmuWindow::EmuWindow(QWidget *parent) : QMainWindow(parent)
 
     debug.set_e(emuthread.get_e());
 
+    connect(&debug, SIGNAL(toggle_emulation_run(bool)), this, SLOT(emu_toggle_debug_break(bool)));
+
     connect(this, SIGNAL(shutdown()), &emuthread, SLOT(shutdown()));
     connect(this, SIGNAL(press_key(PAD_BUTTON)), &emuthread, SLOT(press_key(PAD_BUTTON)));
     connect(this, SIGNAL(release_key(PAD_BUTTON)), &emuthread, SLOT(release_key(PAD_BUTTON)));
@@ -362,9 +364,6 @@ void EmuWindow::keyPressEvent(QKeyEvent *event)
         case Qt::Key_F1:
             emuthread.gsdump_single_frame();
             break;
-        case Qt::Key_D:
-            debug.add_instr_breakpoint_ee(0x80000180);
-            break;
     }
 }
 
@@ -454,6 +453,7 @@ void EmuWindow::emu_nonfatal_error(QString err)
 void EmuWindow::emu_breakpoint(unsigned int addr)
 {
     debug.set_cursor(addr);
+    debug.set_run_status(false);
     debug.refresh();
     debug.show();
 }
@@ -508,6 +508,15 @@ void EmuWindow::save_state()
 void EmuWindow::show_debugger()
 {
     emuthread.pause(PAUSE_EVENT::DEBUG_BREAK);
+    debug.set_run_status(false);
     debug.refresh();
     debug.show();
+}
+
+void EmuWindow::emu_toggle_debug_break(bool running)
+{
+    if (running)
+        emuthread.unpause(PAUSE_EVENT::DEBUG_BREAK);
+    else
+        emuthread.pause(PAUSE_EVENT::DEBUG_BREAK);
 }

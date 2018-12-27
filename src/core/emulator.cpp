@@ -1663,5 +1663,6 @@ void Emulator::request_gsdump_single_frame()
 DebugInfo* Emulator::get_debug_info()
 {
     debug_info.ee = &ee;
+    debug_info.iop = &iop;
     return &debug_info;
 }

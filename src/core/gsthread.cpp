@@ -1328,9 +1328,8 @@ void GraphicsSynthesizerThread::draw_pixel(int32_t x, int32_t y, uint32_t z, RGB
 
     if (test->dest_alpha_test && !frame_24bit)
     {
-        if (test->dest_alpha_method && !(frame_color & (1 << 31)))
-            return;
-        else if (!test->dest_alpha_method && (frame_color & (1 << 31)))
+        bool alpha = frame_color & (1 << 31);
+        if (test->dest_alpha_method ^ alpha)
             return;
     }
 
