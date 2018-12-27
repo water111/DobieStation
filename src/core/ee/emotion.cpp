@@ -34,6 +34,22 @@ const char* EmotionEngine::REG(int id)
     return names[id];
 }
 
+const char* EmotionEngine::COP0_REG(int id)
+{
+    static const char* names[] =
+    {
+        "Index", "Random", "EntryLo0", "EntryLo1",
+        "Context", "PageMask", "Wired", "---",
+        "BadVAddr", "Count", "EntryHi", "Compare",
+        "Status", "Cause", "EPC", "PRid",
+        "Config", "---", "---", "---",
+        "---", "---", "---", "BadPAddr",
+        "Debug", "PCCR/PCR0/PCR1", "---", "---",
+        "TagLo", "TagHi", "ErrorEPC", "---"
+    };
+    return names[id];
+}
+
 const char* EmotionEngine::SYSCALL(int id)
 {
     //Taken from PCSX2

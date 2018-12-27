@@ -1664,5 +1664,7 @@ DebugInfo* Emulator::get_debug_info()
 {
     debug_info.ee = &ee;
     debug_info.iop = &iop;
+    debug_info.ee_cop0 = &cp0;
+    debug_info.fpu = &fpu;
     return &debug_info;
 }

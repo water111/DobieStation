@@ -152,12 +152,18 @@ int EmuWindow::init(int argc, char** argv)
     return 0;
 }
 
+void EmuWindow::wait_for_emuthread_pause()
+{
+    while (!emuthread.is_paused());
+}
+
 int EmuWindow::run_gsdump(const char* file_name)
 {
     emuthread.gsdump_read(file_name);
     emuthread.unpause(PAUSE_EVENT::GAME_NOT_LOADED);
     return 0;
 }
+
 int EmuWindow::load_exec(const char* file_name, bool skip_BIOS)
 {
     ifstream exec_file(file_name, ios::binary | ios::in);
@@ -508,6 +514,7 @@ void EmuWindow::save_state()
 void EmuWindow::show_debugger()
 {
     emuthread.pause(PAUSE_EVENT::DEBUG_BREAK);
+    wait_for_emuthread_pause();
     debug.set_run_status(false);
     debug.refresh();
     debug.show();

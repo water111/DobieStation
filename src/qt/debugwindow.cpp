@@ -11,6 +11,30 @@
 const int MAX_DISASM_INSTRS = 1024 * 16;
 const int MAX_MEM_VIEW = 1024;
 
+QString u32_to_hexstr(uint32_t value)
+{
+    return QString("%1").arg(QString::number(value, 16), 8, '0');
+}
+
+QString u128_to_hexstr(uint128_t value)
+{
+    QString str;
+    for (int i = 3; i >= 0; i--)
+    {
+        str += u32_to_hexstr(value._u32[i]);
+        if (i)
+            str += "_";
+    }
+    return str;
+}
+
+void DebugWindow::insert_string(QTableWidget *table, int column, QString str)
+{
+    QTableWidgetItem* item = new QTableWidgetItem(str);
+    table->insertRow(table->rowCount());
+    table->setItem(table->rowCount() - 1, column, item);
+}
+
 DebugWindow::DebugWindow(QWidget* parent) : QWidget(parent)
 {
     setWindowTitle("Debugger");
@@ -213,11 +237,11 @@ void DebugWindow::update_disassembly(bool scroll_to_center)
     for (int i = 0; i < MAX_DISASM_INSTRS * 4; i += 4)
     {
         uint32_t addr = cursor + (i - (MAX_DISASM_INSTRS * 2));
-        QString addr_str = QString("[%1] ").arg(QString::number(addr, 16), 8, '0');
+        QString addr_str = "[" + u32_to_hexstr(addr) + "] ";
 
         if (!addr_valid(addr))
         {
-            QTableWidgetItem* invalid = new QTableWidgetItem(addr_str + " FFFFFFFF - ???");
+            QTableWidgetItem* invalid = new QTableWidgetItem(addr_str + "FFFFFFFF - ???");
             disasm_view->setItem(i / 4, 0, invalid);
             continue;
         }
@@ -235,7 +259,7 @@ void DebugWindow::update_disassembly(bool scroll_to_center)
                 instr = 0xFFFFFFFF;
         }
 
-        QString instr_str = QString("%1 ").arg(QString::number(instr, 16), 8, '0');
+        QString instr_str = u32_to_hexstr(instr) + " ";
         QString dis_str = QString::fromStdString(EmotionDisasm::disasm_instr(instr, addr));
 
         if (addr == PC)
@@ -253,7 +277,7 @@ void DebugWindow::update_disassembly(bool scroll_to_center)
         }
 
         disasm_view->setItem(i / 4, 0, text_item);
-        if (scroll_to_center && addr == PC)
+        if (scroll_to_center && addr == cursor)
             disasm_view->scrollToItem(text_item, QAbstractItemView::PositionAtCenter);
     }
 }
@@ -276,34 +300,92 @@ void DebugWindow::update_registers()
 void DebugWindow::update_registers_ee()
 {
     reg_view->clear();
+    reg_view->setRowCount(0);
     EmotionEngine* ee = e->get_debug_info()->ee;
+
+    //GPRs
     for (int i = 0; i < 31; i++)
     {
         QString reg_str = EmotionEngine::REG(i + 1);
-        QString data_str;
-        uint128_t data = ee->get_gpr<uint128_t>(i + 1);
-        for (int j = 3; j >= 0; j--)
+        QString gpr_str = u128_to_hexstr(ee->get_gpr<uint128_t>(i + 1));
+        insert_string(reg_view, 0, reg_str + ":" + gpr_str);
+    }
+
+    //Special registers
+    uint128_t lo_data, hi_data;
+    lo_data._u64[0] = ee->get_LO();
+    lo_data._u64[1] = ee->get_LO1();
+    hi_data._u64[0] = ee->get_HI();
+    hi_data._u64[1] = ee->get_HI1();
+
+    QString lo_str, hi_str;
+    lo_str = u128_to_hexstr(lo_data);
+    hi_str = u128_to_hexstr(hi_data);
+
+    insert_string(reg_view, 0, "lo:" + lo_str);
+    insert_string(reg_view, 0, "hi:" + hi_str);
+
+    QString sa_str = u32_to_hexstr(ee->get_SA());
+    insert_string(reg_view, 0, "sa:" + sa_str);
+
+    QString pc_str = u32_to_hexstr(ee->get_PC());
+    insert_string(reg_view, 0, "pc:" + pc_str);
+
+    //COP0 registers
+    Cop0* ee_cop0 = e->get_debug_info()->ee_cop0;
+    for (int i = 0; i < 32; i++)
+    {
+        QString reg_str = EmotionEngine::COP0_REG(i);
+        if (reg_str == "---")
+            continue;
+        QString cop0_str;
+        if (i == 25)
         {
-            data_str += QString("%1").arg(QString::number(data._u32[j], 16), 8, '0');
-            if (j)
-                data_str += "_";
+            cop0_str = u32_to_hexstr(ee_cop0->PCCR) + "/";
+            cop0_str += u32_to_hexstr(ee_cop0->PCR0) + "/";
+            cop0_str += u32_to_hexstr(ee_cop0->PCR1);
         }
-        QTableWidgetItem* text_item = new QTableWidgetItem(reg_str + ":" + data_str);
-        reg_view->setItem(i, 0, text_item);
+        else
+            cop0_str = u32_to_hexstr(ee_cop0->mfc(i));
+        insert_string(reg_view, 0, reg_str + ":" + cop0_str);
+    }
+
+    //FPRs
+    Cop1* fpu = e->get_debug_info()->fpu;
+
+    for (int i = 0; i < 32; i++)
+    {
+        QString reg_str = QString("f%1:").arg(QString::number(i));
+        float fpr = fpu->get_gpr_f(i);
+        QString fpr_str;
+        fpr_str.setNum(fpr);
+        insert_string(reg_view, 0, reg_str + fpr_str);
     }
 }
 
 void DebugWindow::update_registers_iop()
 {
     reg_view->clear();
+    reg_view->setRowCount(0);
     IOP* iop = e->get_debug_info()->iop;
+
+    //GPRs
     for (int i = 0; i < 31; i++)
     {
         QString reg_str = IOP::REG(i + 1);
-        QString data_str = QString("%1").arg(QString::number(iop->get_gpr(i), 16), 8, '0');
-        QTableWidgetItem* text_item = new QTableWidgetItem(reg_str + ":" + data_str);
-        reg_view->setItem(i, 0, text_item);
+        QString data_str = u32_to_hexstr(iop->get_gpr(i));
+        insert_string(reg_view, 0, reg_str + ":" + data_str);
     }
+
+    //Special registers
+    QString lo_str = u32_to_hexstr(iop->get_LO());
+    insert_string(reg_view, 0, "lo:" + lo_str);
+
+    QString hi_str = u32_to_hexstr(iop->get_HI());
+    insert_string(reg_view, 0, "hi:" + hi_str);
+
+    QString pc_str = u32_to_hexstr(iop->get_PC());
+    insert_string(reg_view, 0, "pc:" + pc_str);
 }
 
 void DebugWindow::update_memory(bool scroll_to_center)
@@ -325,8 +407,7 @@ void DebugWindow::update_memory(bool scroll_to_center)
     for (int i = 0; i < mem_view->rowCount(); i++)
     {
         uint32_t addr = memory_cursor + (i * 16) - (MAX_MEM_VIEW * 8);
-        QTableWidgetItem* addr_item =
-                new QTableWidgetItem(QString("$%1").arg(QString::number(addr, 16), 8, '0'));
+        QTableWidgetItem* addr_item = new QTableWidgetItem("$" + u32_to_hexstr(addr));
 
         for (int j = 0; j < 4; j++)
         {
@@ -340,13 +421,12 @@ void DebugWindow::update_memory(bool scroll_to_center)
                     data = info->iop->read32(addr + (j * 4));
                     break;
             }
-            QTableWidgetItem* data_item =
-                    new QTableWidgetItem(QString("%1").arg(QString::number(data, 16), 8, '0'));
+            QTableWidgetItem* data_item = new QTableWidgetItem(u32_to_hexstr(data));
             mem_view->setItem(i, j + 1, data_item);
         }
 
         mem_view->setItem(i, 0, addr_item);
-        if (scroll_to_center && addr == memory_cursor)
+        if (scroll_to_center && (addr & ~0xF) == (memory_cursor & ~0xF))
             mem_view->scrollToItem(addr_item, QAbstractItemView::PositionAtCenter);
     }
 }

@@ -30,17 +30,19 @@ class Cop1
         COP1_REG gpr[32];
         COP1_REG accumulator;
 
-        float convert(uint32_t value);
         void check_overflow(uint32_t& dest, bool set_flags);
         void check_underflow(uint32_t& dest, bool set_flags);
     public:
         Cop1();
+
+        static float convert(uint32_t value);
 
         void reset();
 
         bool get_condition();
 
         uint32_t get_gpr(int index);
+        float get_gpr_f(int index);
         void mtc(int index, uint32_t value);
         uint32_t cfc(int index);
         void ctc(int index, uint32_t value);

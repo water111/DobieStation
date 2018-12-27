@@ -10,6 +10,7 @@ EmuThread::EmuThread()
 {
     abort = false;
     pause_status = 0x0;
+    paused = false;
     gsdump_reading = false;
     frame_advance = false;
 }
@@ -22,6 +23,11 @@ void EmuThread::reset()
 Emulator* EmuThread::get_e()
 {
     return &e;
+}
+
+bool EmuThread::is_paused()
+{
+    return paused && pause_status;
 }
 
 void EmuThread::set_skip_BIOS_hack(SKIP_HACK skip)
@@ -177,7 +183,10 @@ void EmuThread::run()
         if (abort)
             return;
         else if (pause_status)
+        {
+            paused = true;
             usleep(10000);
+        }
         else if (gsdump_reading)
             gsdump_run();
         else
@@ -186,6 +195,7 @@ void EmuThread::run()
                 pause(PAUSE_EVENT::FRAME_ADVANCE);
             try
             {
+                paused = false;
                 e.run();
                 int w, h, new_w, new_h;
                 e.get_inner_resolution(w, h);

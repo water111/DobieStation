@@ -25,6 +25,7 @@ class EmuThread : public QThread
     private:
         bool abort;
         uint32_t pause_status;
+        bool paused;
         QMutex emu_mutex, load_mutex, pause_mutex;
         Emulator e;
 
@@ -42,6 +43,8 @@ class EmuThread : public QThread
         void load_BIOS(uint8_t* BIOS);
         void load_ELF(uint8_t* ELF, uint64_t ELF_size);
         void load_CDVD(const char* name);
+
+        bool is_paused();
 
         bool load_state(const char* name);
         bool save_state(const char* name);

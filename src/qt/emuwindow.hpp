@@ -33,6 +33,8 @@ class EmuWindow : public QMainWindow
         QAction* exit_action;
         QAction* show_debugger_action;
         int scale_factor;
+
+        void wait_for_emuthread_pause();
     public:
         explicit EmuWindow(QWidget *parent = nullptr);
         int init(int argc, char** argv);

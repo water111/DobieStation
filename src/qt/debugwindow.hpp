@@ -49,6 +49,8 @@ class DebugWindow : public QWidget
         void create_cpu_selection();
         void create_tables();
 
+        void insert_string(QTableWidget* table, int column, QString str);
+
         bool addr_valid(uint32_t addr);
         void update_toggle_run_button();
         void update_disassembly(bool scroll_to_center);
