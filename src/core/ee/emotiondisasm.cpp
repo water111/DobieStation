@@ -641,12 +641,20 @@ string disasm_dsra32(uint32_t instruction)
     return disasm_special_shift("dsra32", instruction);
 }
 
-
 string disasm_beq(uint32_t instruction, uint32_t instr_addr)
 {
+    if (!RS && !RT)
+    {
+        stringstream output;
+        int32_t offset = IMM;
+        offset <<= 2;
+
+        output << "b $"
+               << setfill('0') << setw(8) << hex << (instr_addr + offset + 4);
+        return output.str();
+    }
     return disasm_branch_equality("beq", instruction, instr_addr);
 }
-
 
 string disasm_branch_inequality(const std::string opcode, uint32_t instruction, uint32_t instr_addr)
 {

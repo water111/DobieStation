@@ -81,6 +81,13 @@ void IOP::run(int cycles)
                 else
                     branch_delay--;
             }
+
+            DebugInfo* info = e->get_debug_info();
+            for (int i = 0; i < info->iop_breakpoints.size(); i++)
+            {
+                if (PC == info->iop_breakpoints[i].addr)
+                    Errors::breakpoint(PC);
+            }
         }
     }
 

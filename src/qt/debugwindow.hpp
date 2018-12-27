@@ -9,25 +9,49 @@
 
 #include "../core/emulator.hpp"
 
+enum class DEBUG_SELECTION
+{
+    EE,
+    IOP,
+    VU0,
+    VU1
+};
+
 class DebugWindow : public QWidget
 {
     Q_OBJECT
     private:
         Emulator* e;
 
+        DEBUG_SELECTION cpu_selection;
         bool emulation_running;
 
-        QGroupBox* mem_box;
-        QGroupBox* button_box;
-        QPlainTextEdit* mem_view;
+        QGroupBox* cpu_selection_box;
+        QPushButton* ee_select_button;
+        QPushButton* iop_select_button;
+        QPushButton* vu0_select_button;
+        QPushButton* vu1_select_button;
+
+        QGroupBox* disasm_reg_box;
         QTableWidget* disasm_view;
+        QTableWidget* reg_view;
+
+        QTableWidget* mem_view;
+
+        QGroupBox* button_box;
         QPushButton* step_button;
         QPushButton* toggle_run_button;
 
         uint32_t cursor;
 
+        void create_cpu_selection();
+        void create_tables();
+
         void update_toggle_run_button();
         void update_disassembly(bool scroll_to_center);
+        void update_registers();
+        void update_registers_ee();
+        void update_registers_iop();
     public:
         explicit DebugWindow(QWidget *parent = nullptr);
 
@@ -44,6 +68,9 @@ class DebugWindow : public QWidget
         void step();
         void toggle_run();
         void instr_breakpoint_toggle(int row, int column);
+
+        void select_ee();
+        void select_iop();
 };
 
 #endif // DEBUGWINDOW_HPP

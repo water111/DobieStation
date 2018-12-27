@@ -44,6 +44,7 @@ struct DebugInfo
     EmotionEngine* ee;
     IOP* iop;
     std::vector<Breakpoint_CPU> ee_breakpoints;
+    std::vector<Breakpoint_CPU> iop_breakpoints;
 };
 
 class Emulator
