@@ -424,12 +424,7 @@ string disasm_movn(uint32_t instruction)
 
 string disasm_syscall_ee(uint32_t instruction)
 {
-    stringstream output;
-    string opcode = "syscall";
-    uint32_t code = (instruction >> 6) & 0xFFFFF;
-    output << "$" << setfill('0') << setw(8) << hex << code;
-
-    return opcode + " " + output.str();
+    return "syscall";
 }
 
 string disasm_movereg(const string opcode, uint32_t instruction)

@@ -8,7 +8,8 @@
 #include "debugwindow.hpp"
 #include "../core/ee/emotiondisasm.hpp"
 
-const int MAX_DISASM_INSTRS = 16384;
+const int MAX_DISASM_INSTRS = 1024 * 16;
+const int MAX_MEM_VIEW = 1024;
 
 DebugWindow::DebugWindow(QWidget* parent) : QWidget(parent)
 {
@@ -16,6 +17,8 @@ DebugWindow::DebugWindow(QWidget* parent) : QWidget(parent)
     resize(800, 600);
     e = nullptr;
     cursor = 0;
+    ee_memory_cursor = 0x00100000;
+    iop_memory_cursor = 0x00100000;
 
     cpu_selection = DEBUG_SELECTION::EE;
 
@@ -23,10 +26,10 @@ DebugWindow::DebugWindow(QWidget* parent) : QWidget(parent)
 
     create_tables();
 
-    step_button = new QPushButton(tr("&Step"), this);
+    step_button = new QPushButton(tr("Step"), this);
     connect(step_button, SIGNAL(pressed()), this, SLOT(step()));
 
-    toggle_run_button = new QPushButton(tr("&Break"), this);
+    toggle_run_button = new QPushButton(tr("Break"), this);
     connect(toggle_run_button, SIGNAL(pressed()), this, SLOT(toggle_run()));
 
     create_cpu_selection();
@@ -81,7 +84,7 @@ void DebugWindow::create_tables()
 
     QHeaderView *verticalHeader = disasm_view->verticalHeader();
     verticalHeader->setSectionResizeMode(QHeaderView::Fixed);
-    verticalHeader->setDefaultSectionSize(16);
+    verticalHeader->setDefaultSectionSize(18);
 
     reg_view = new QTableWidget(31, 1, this);
     reg_view->horizontalHeader()->hide();
@@ -92,9 +95,9 @@ void DebugWindow::create_tables()
 
     verticalHeader = reg_view->verticalHeader();
     verticalHeader->setSectionResizeMode(QHeaderView::Fixed);
-    verticalHeader->setDefaultSectionSize(16);
+    verticalHeader->setDefaultSectionSize(18);
 
-    mem_view = new QTableWidget(5, 16, this);
+    mem_view = new QTableWidget(MAX_MEM_VIEW, 5, this);
     mem_view->horizontalHeader()->hide();
     mem_view->verticalHeader()->hide();
     mem_view->setEditTriggers(QAbstractItemView::NoEditTriggers);
@@ -102,7 +105,11 @@ void DebugWindow::create_tables()
 
     verticalHeader = mem_view->verticalHeader();
     verticalHeader->setSectionResizeMode(QHeaderView::Fixed);
-    verticalHeader->setDefaultSectionSize(16);
+    verticalHeader->setDefaultSectionSize(18);
+
+    QHeaderView *horizontalHeader = mem_view->horizontalHeader();
+    horizontalHeader->setSectionResizeMode(QHeaderView::Fixed);
+    horizontalHeader->setDefaultSectionSize(70);
 
     connect(disasm_view, SIGNAL(cellDoubleClicked(int,int)), this, SLOT(instr_breakpoint_toggle(int,int)));
 
@@ -148,6 +155,7 @@ void DebugWindow::refresh()
     update_toggle_run_button();
     update_disassembly(true);
     update_registers();
+    update_memory(true);
 }
 
 void DebugWindow::keyPressEvent(QKeyEvent *event)
@@ -157,18 +165,18 @@ void DebugWindow::keyPressEvent(QKeyEvent *event)
     {
         case Qt::Key_G:
             if (event->modifiers() == Qt::ControlModifier && !emulation_running)
-            {
-                QString text = QInputDialog::getText(this, "Disassemble address", "Enter an address to disassemble");
-                bool ok;
-                uint32_t new_addr = text.toUInt(&ok, 16);
-                if (ok)
-                {
-                    cursor = new_addr;
-                    update_disassembly(true);
-                }
-            }
+                prompt_disasm_jump();
+            break;
+        case Qt::Key_M:
+            if (event->modifiers() == Qt::ControlModifier && !emulation_running)
+                prompt_memory_jump();
             break;
     }
+}
+
+bool DebugWindow::addr_valid(uint32_t addr)
+{
+    return true;
 }
 
 void DebugWindow::update_toggle_run_button()
@@ -205,6 +213,14 @@ void DebugWindow::update_disassembly(bool scroll_to_center)
     for (int i = 0; i < MAX_DISASM_INSTRS * 4; i += 4)
     {
         uint32_t addr = cursor + (i - (MAX_DISASM_INSTRS * 2));
+        QString addr_str = QString("[%1] ").arg(QString::number(addr, 16), 8, '0');
+
+        if (!addr_valid(addr))
+        {
+            QTableWidgetItem* invalid = new QTableWidgetItem(addr_str + " FFFFFFFF - ???");
+            disasm_view->setItem(i / 4, 0, invalid);
+            continue;
+        }
 
         uint32_t instr;
         switch (cpu_selection)
@@ -219,7 +235,6 @@ void DebugWindow::update_disassembly(bool scroll_to_center)
                 instr = 0xFFFFFFFF;
         }
 
-        QString addr_str = QString("[%1] ").arg(QString::number(addr, 16), 8, '0');
         QString instr_str = QString("%1 ").arg(QString::number(instr, 16), 8, '0');
         QString dis_str = QString::fromStdString(EmotionDisasm::disasm_instr(instr, addr));
 
@@ -238,7 +253,7 @@ void DebugWindow::update_disassembly(bool scroll_to_center)
         }
 
         disasm_view->setItem(i / 4, 0, text_item);
-        if (scroll_to_center && i == MAX_DISASM_INSTRS * 2)
+        if (scroll_to_center && addr == PC)
             disasm_view->scrollToItem(text_item, QAbstractItemView::PositionAtCenter);
     }
 }
@@ -291,6 +306,51 @@ void DebugWindow::update_registers_iop()
     }
 }
 
+void DebugWindow::update_memory(bool scroll_to_center)
+{
+    uint32_t memory_cursor;
+    switch (cpu_selection)
+    {
+        case DEBUG_SELECTION::EE:
+            memory_cursor = ee_memory_cursor;
+            break;
+        case DEBUG_SELECTION::IOP:
+            memory_cursor = iop_memory_cursor;
+            break;
+        default:
+            return;
+    }
+
+    DebugInfo* info = e->get_debug_info();
+    for (int i = 0; i < mem_view->rowCount(); i++)
+    {
+        uint32_t addr = memory_cursor + (i * 16) - (MAX_MEM_VIEW * 8);
+        QTableWidgetItem* addr_item =
+                new QTableWidgetItem(QString("$%1").arg(QString::number(addr, 16), 8, '0'));
+
+        for (int j = 0; j < 4; j++)
+        {
+            uint32_t data = 0xFFFFFFFF;
+            switch (cpu_selection)
+            {
+                case DEBUG_SELECTION::EE:
+                    data = info->ee->read32(addr + (j * 4));
+                    break;
+                case DEBUG_SELECTION::IOP:
+                    data = info->iop->read32(addr + (j * 4));
+                    break;
+            }
+            QTableWidgetItem* data_item =
+                    new QTableWidgetItem(QString("%1").arg(QString::number(data, 16), 8, '0'));
+            mem_view->setItem(i, j + 1, data_item);
+        }
+
+        mem_view->setItem(i, 0, addr_item);
+        if (scroll_to_center && addr == memory_cursor)
+            mem_view->scrollToItem(addr_item, QAbstractItemView::PositionAtCenter);
+    }
+}
+
 void DebugWindow::step()
 {
     e->step();
@@ -300,7 +360,7 @@ void DebugWindow::step()
 void DebugWindow::toggle_run()
 {
     emulation_running = !emulation_running;
-    if (emulation_running)
+    if (!emulation_running)
         refresh();
     else
         update_toggle_run_button();
@@ -348,6 +408,40 @@ void DebugWindow::instr_breakpoint_toggle(int row, int column)
     }
 
     update_disassembly(false);
+}
+
+void DebugWindow::prompt_disasm_jump()
+{
+    QString text = QInputDialog::getText(this, "Disassemble address", "Enter an address to disassemble");
+    bool ok;
+    uint32_t new_addr = text.toUInt(&ok, 16);
+    if (ok)
+    {
+        cursor = new_addr;
+        update_disassembly(true);
+    }
+}
+
+void DebugWindow::prompt_memory_jump()
+{
+    QString text = QInputDialog::getText(this, "Memory address", "Enter a memory address to display");
+    bool ok;
+    uint32_t new_addr = text.toUInt(&ok, 16);
+    if (ok)
+    {
+        switch (cpu_selection)
+        {
+            case DEBUG_SELECTION::EE:
+                ee_memory_cursor = new_addr;
+                break;
+            case DEBUG_SELECTION::IOP:
+                iop_memory_cursor = new_addr;
+                break;
+            default:
+                return;
+        }
+        update_memory(true);
+    }
 }
 
 void DebugWindow::select_ee()

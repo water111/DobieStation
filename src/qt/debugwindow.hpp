@@ -43,12 +43,16 @@ class DebugWindow : public QWidget
         QPushButton* toggle_run_button;
 
         uint32_t cursor;
+        uint32_t ee_memory_cursor;
+        uint32_t iop_memory_cursor;
 
         void create_cpu_selection();
         void create_tables();
 
+        bool addr_valid(uint32_t addr);
         void update_toggle_run_button();
         void update_disassembly(bool scroll_to_center);
+        void update_memory(bool scroll_to_center);
         void update_registers();
         void update_registers_ee();
         void update_registers_iop();
@@ -68,6 +72,8 @@ class DebugWindow : public QWidget
         void step();
         void toggle_run();
         void instr_breakpoint_toggle(int row, int column);
+        void prompt_disasm_jump();
+        void prompt_memory_jump();
 
         void select_ee();
         void select_iop();
