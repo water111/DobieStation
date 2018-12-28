@@ -217,17 +217,17 @@ void DebugWindow::update_disassembly(bool scroll_to_center)
     DebugInfo* info = e->get_debug_info();
 
     uint32_t PC;
-    std::vector<Breakpoint_CPU> *breakpoints;
+    std::vector<uint32_t> *breakpoints;
 
     switch (cpu_selection)
     {
         case DEBUG_SELECTION::EE:
             PC = info->ee->get_PC();
-            breakpoints = &info->ee_breakpoints;
+            breakpoints = &info->ee_instr_breakpoints;
             break;
         case DEBUG_SELECTION::IOP:
             PC = info->iop->get_PC();
-            breakpoints = &info->iop_breakpoints;
+            breakpoints = &info->iop_instr_breakpoints;
             break;
         default:
             PC = 0;
@@ -272,7 +272,7 @@ void DebugWindow::update_disassembly(bool scroll_to_center)
         //Change the color of the cell if it's a breakpoint
         for (int i = 0; i < breakpoints->size(); i++)
         {
-            if (breakpoints->at(i).addr == addr)
+            if (breakpoints->at(i) == addr)
                 text_item->setBackground(Qt::red);
         }
 
@@ -454,15 +454,15 @@ void DebugWindow::instr_breakpoint_toggle(int row, int column)
     uint32_t addr = cursor + row * 4 - MAX_DISASM_INSTRS * 2;
     DebugInfo* info = e->get_debug_info();
 
-    std::vector<Breakpoint_CPU>* breakpoints;
+    std::vector<uint32_t>* breakpoints;
 
     switch (cpu_selection)
     {
         case DEBUG_SELECTION::EE:
-            breakpoints = &info->ee_breakpoints;
+            breakpoints = &info->ee_instr_breakpoints;
             break;
         case DEBUG_SELECTION::IOP:
-            breakpoints = &info->iop_breakpoints;
+            breakpoints = &info->iop_instr_breakpoints;
             break;
         default:
             breakpoints = nullptr;
@@ -472,7 +472,7 @@ void DebugWindow::instr_breakpoint_toggle(int row, int column)
     bool breakpoint_found = false;
     for (int i = 0; i < breakpoints->size(); i++)
     {
-        if (addr == breakpoints->at(i).addr)
+        if (addr == breakpoints->at(i))
         {
             breakpoints->erase(breakpoints->begin() + i);
             breakpoint_found = true;
@@ -481,11 +481,7 @@ void DebugWindow::instr_breakpoint_toggle(int row, int column)
     }
 
     if (!breakpoint_found)
-    {
-        Breakpoint_CPU breakpoint;
-        breakpoint.addr = addr;
-        breakpoints->push_back(breakpoint);
-    }
+        breakpoints->push_back(addr);
 
     update_disassembly(false);
 }

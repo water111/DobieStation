@@ -13,7 +13,7 @@
 //#define printf(fmt, ...)(0)
 
 EmotionEngine::EmotionEngine(Cop0* cp0, Cop1* fpu, Emulator* e, uint8_t* sp, VectorUnit* vu0, VectorUnit* vu1) :
-    cp0(cp0), fpu(fpu), e(e), scratchpad(sp), vu0(vu0), vu1(vu1)
+    e(e), cp0(cp0), fpu(fpu), vu0(vu0), vu1(vu1), scratchpad(sp)
 {
     reset();
 }
@@ -170,9 +170,9 @@ int EmotionEngine::run(int cycles_to_run)
             }
 
             DebugInfo* info = e->get_debug_info();
-            for (int i = 0; i < info->ee_breakpoints.size(); i++)
+            for (unsigned int i = 0; i < info->ee_instr_breakpoints.size(); i++)
             {
-                if (PC == info->ee_breakpoints[i].addr)
+                if (PC == info->ee_instr_breakpoints[i])
                     Errors::breakpoint(PC);
             }
         }

@@ -14,10 +14,10 @@
 #define EELOAD_SIZE 0x20000
 
 Emulator::Emulator() :
-    cdvd(this), cp0(&dmac), ee(&cp0, &fpu, this, (uint8_t*)&scratchpad, &vu0, &vu1),
-    dmac(&ee, this, &gif, &ipu, &sif, &vif0, &vif1), gif(&gs), gs(&intc),
+    cp0(&dmac), cdvd(this), dmac(&ee, this, &gif, &ipu, &sif, &vif0, &vif1),
+    ee(&cp0, &fpu, this, (uint8_t*)&scratchpad, &vu0, &vu1), timers(&intc), gs(&intc), gif(&gs),
     iop(this), iop_dma(this, &cdvd, &sif, &sio2, &spu, &spu2), iop_timers(this), intc(&ee), ipu(&intc),
-    timers(&intc), sio2(this, &pad, &memcard), spu(1, this), spu2(2, this), vif0(nullptr, &vu0, &intc, 0),
+    sio2(this, &pad, &memcard), spu(1, this), spu2(2, this), vif0(nullptr, &vu0, &intc, 0),
     vif1(&gif, &vu1, &intc, 1), vu0(0, this), vu1(1, this)
 {
     BIOS = nullptr;
@@ -78,7 +78,8 @@ void Emulator::run()
     
     while (instructions_run < CYCLES_PER_FRAME)
     {
-        int cycles = ee.run(16);
+        int cycles = 16;
+        ee.run(cycles);
         instructions_run += cycles;
         cycles >>= 1;
         dmac.run(cycles);
@@ -118,6 +119,7 @@ void Emulator::run()
             gs.render_CRT();
         }
     }
+
     fesetround(originalRounding);
     //VBLANK end
     iop_request_IRQ(11);
@@ -1666,5 +1668,7 @@ DebugInfo* Emulator::get_debug_info()
     debug_info.iop = &iop;
     debug_info.ee_cop0 = &cp0;
     debug_info.fpu = &fpu;
+    debug_info.vu0 = &vu0;
+    debug_info.vu1 = &vu1;
     return &debug_info;
 }

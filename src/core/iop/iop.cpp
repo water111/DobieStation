@@ -83,9 +83,9 @@ void IOP::run(int cycles)
             }
 
             DebugInfo* info = e->get_debug_info();
-            for (int i = 0; i < info->iop_breakpoints.size(); i++)
+            for (unsigned int i = 0; i < info->iop_instr_breakpoints.size(); i++)
             {
-                if (PC == info->iop_breakpoints[i].addr)
+                if (PC == info->iop_instr_breakpoints[i])
                     Errors::breakpoint(PC);
             }
         }

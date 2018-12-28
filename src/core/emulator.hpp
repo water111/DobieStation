@@ -25,28 +25,13 @@
 #include "gif.hpp"
 #include "sif.hpp"
 
+#include "debuginfo.hpp"
+
 enum SKIP_HACK
 {
     NONE,
     LOAD_ELF,
     LOAD_DISC
-};
-
-//For the EE and IOP
-struct Breakpoint_CPU
-{
-    uint32_t addr;
-};
-
-//All info a debugger needs access to
-struct DebugInfo
-{
-    EmotionEngine* ee;
-    IOP* iop;
-    Cop0* ee_cop0;
-    Cop1* fpu;
-    std::vector<Breakpoint_CPU> ee_breakpoints;
-    std::vector<Breakpoint_CPU> iop_breakpoints;
 };
 
 class Emulator
