@@ -1,6 +1,7 @@
 #ifndef GSTHREAD_HPP
 #define GSTHREAD_HPP
 #include <cstdint>
+#include <list>
 #include "gscontext.hpp"
 #include "gs.hpp"
 
@@ -89,6 +90,14 @@ struct TexLookupInfo
     uint8_t fog;
 };
 
+struct CachedTexture
+{
+    TEX0 tex0;
+    TEXA_REG texa;
+
+    uint8_t* mem;
+};
+
 class GraphicsSynthesizerThread
 {
     private:
@@ -98,6 +107,11 @@ class GraphicsSynthesizerThread
         uint8_t CRT_mode;
         uint8_t clut_cache[1024];
         uint32_t CBP0, CBP1;
+
+        //1024 * 16 == amount of 256-byte blocks in GS memory
+        CachedTexture* tex_cache[1024 * 16];
+        CachedTexture* cur_tex;
+        bool dirty_pages[512];
 
         //CSR/IMR stuff - to be merged into structs
 
@@ -172,16 +186,21 @@ class GraphicsSynthesizerThread
         uint8_t read_PSMCT8_block(uint32_t base, uint32_t width, uint32_t x, uint32_t y);
         uint8_t read_PSMCT4_block(uint32_t base, uint32_t width, uint32_t x, uint32_t y);
 
-        void write_PSMCT32_block(uint32_t base, uint32_t width, uint32_t x, uint32_t y, uint32_t value);
-        void write_PSMCT32Z_block(uint32_t base, uint32_t width, uint32_t x, uint32_t y, uint32_t value);
-        void write_PSMCT24_block(uint32_t base, uint32_t width, uint32_t x, uint32_t y, uint32_t value);
-        void write_PSMCT24Z_block(uint32_t base, uint32_t width, uint32_t x, uint32_t y, uint32_t value);
-        void write_PSMCT16_block(uint32_t base, uint32_t width, uint32_t x, uint32_t y, uint16_t value);
-        void write_PSMCT16S_block(uint32_t base, uint32_t width, uint32_t x, uint32_t y, uint16_t value);
-        void write_PSMCT16Z_block(uint32_t base, uint32_t width, uint32_t x, uint32_t y, uint16_t value);
-        void write_PSMCT16SZ_block(uint32_t base, uint32_t width, uint32_t x, uint32_t y, uint16_t value);
-        void write_PSMCT8_block(uint32_t base, uint32_t width, uint32_t x, uint32_t y, uint8_t value);
-        void write_PSMCT4_block(uint32_t base, uint32_t width, uint32_t x, uint32_t y, uint8_t value);
+        void write_PSMCT32_block(uint8_t* mem, uint32_t base, uint32_t width, uint32_t x, uint32_t y, uint32_t value);
+        void write_PSMCT32Z_block(uint8_t* mem, uint32_t base, uint32_t width, uint32_t x, uint32_t y, uint32_t value);
+        void write_PSMCT24_block(uint8_t* mem, uint32_t base, uint32_t width, uint32_t x, uint32_t y, uint32_t value);
+        void write_PSMCT24Z_block(uint8_t* mem, uint32_t base, uint32_t width, uint32_t x, uint32_t y, uint32_t value);
+        void write_PSMCT16_block(uint8_t* mem, uint32_t base, uint32_t width, uint32_t x, uint32_t y, uint16_t value);
+        void write_PSMCT16S_block(uint8_t* mem, uint32_t base, uint32_t width, uint32_t x, uint32_t y, uint16_t value);
+        void write_PSMCT16Z_block(uint8_t* mem, uint32_t base, uint32_t width, uint32_t x, uint32_t y, uint16_t value);
+        void write_PSMCT16SZ_block(uint8_t* mem, uint32_t base, uint32_t width, uint32_t x, uint32_t y, uint16_t value);
+        void write_PSMCT8_block(uint8_t* mem, uint32_t base, uint32_t width, uint32_t x, uint32_t y, uint8_t value);
+        void write_PSMCT4_block(uint8_t* mem, uint32_t base, uint32_t width, uint32_t x, uint32_t y, uint8_t value);
+
+        CachedTexture* get_cached_tex();
+        void delete_tex(CachedTexture* tex);
+        void cached_tex_lookup(int16_t u, int16_t v, TexLookupInfo& info);
+        void cached_tex_lookup_int(int16_t u, int16_t v, TexLookupInfo& info);
 
         uint8_t get_16bit_alpha(uint16_t color);
         void calculate_LOD(TexLookupInfo& info);

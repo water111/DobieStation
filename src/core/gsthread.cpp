@@ -22,7 +22,7 @@ static uint32_t page_PSMCT16SZ[32][64][64];
 static uint32_t page_PSMCT8[32][64][128];
 static uint32_t page_PSMCT4[32][128][128];
 
-#define printf(fmt, ...)(0)
+//#define printf(fmt, ...)(0)
 
 /**
   * ~ GS notes ~
@@ -75,6 +75,9 @@ GraphicsSynthesizerThread::GraphicsSynthesizerThread()
 {
     frame_complete = false;
     local_mem = nullptr;
+
+    for (int i = 0; i < 1024 * 16; i++)
+        tex_cache[i] = nullptr;
 
     //Initialize swizzling tables
     for (int block = 0; block < 32; block++)
@@ -307,6 +310,15 @@ void GraphicsSynthesizerThread::reset()
     frame_count = 0;
 
     COLCLAMP = true;
+
+    for (int i = 0; i < 1024 * 16; i++)
+    {
+        if (tex_cache[i])
+        {
+            delete_tex(tex_cache[i]);
+            tex_cache[i] = nullptr;
+        }
+    }
 
     reg.reset();
     context1.reset();
@@ -1011,71 +1023,81 @@ uint8_t GraphicsSynthesizerThread::read_PSMCT4_block(uint32_t base, uint32_t wid
     return (local_mem[addr >> 1] >> ((addr & 1) << 2)) & 0x0f;
 }
 
-void GraphicsSynthesizerThread::write_PSMCT32_block(uint32_t base, uint32_t width, uint32_t x, uint32_t y, uint32_t value)
+void GraphicsSynthesizerThread::write_PSMCT32_block(uint8_t* mem, uint32_t base, uint32_t width, uint32_t x, uint32_t y, uint32_t value)
 {
     uint32_t addr = addr_PSMCT32(base / 256, width / 64, x, y);
-    *(uint32_t*)&local_mem[addr] = value;
+    *(uint32_t*)&mem[addr] = value;
+    dirty_pages[addr >> 13] = true;
 }
 
-void GraphicsSynthesizerThread::write_PSMCT32Z_block(uint32_t base, uint32_t width, uint32_t x, uint32_t y, uint32_t value)
+void GraphicsSynthesizerThread::write_PSMCT32Z_block(uint8_t* mem, uint32_t base, uint32_t width, uint32_t x, uint32_t y, uint32_t value)
 {
     uint32_t addr = addr_PSMCT32Z(base / 256, width / 64, x, y);
-    *(uint32_t*)&local_mem[addr] = value;
+    *(uint32_t*)&mem[addr] = value;
+    dirty_pages[addr >> 13] = true;
 }
 
-void GraphicsSynthesizerThread::write_PSMCT24_block(uint32_t base, uint32_t width, uint32_t x, uint32_t y, uint32_t value)
+void GraphicsSynthesizerThread::write_PSMCT24_block(uint8_t* mem, uint32_t base, uint32_t width, uint32_t x, uint32_t y, uint32_t value)
 {
     uint32_t addr = addr_PSMCT32(base / 256, width / 64, x, y);
-    uint32_t old_mem = *(uint32_t*)&local_mem[addr];
+    uint32_t old_mem = *(uint32_t*)&mem[addr];
     value &= 0xFFFFFF;
-    *(uint32_t*)&local_mem[addr] = (old_mem & 0xFF000000) | value;
+    *(uint32_t*)&mem[addr] = (old_mem & 0xFF000000) | value;
+    dirty_pages[addr >> 13] = true;
 }
 
-void GraphicsSynthesizerThread::write_PSMCT24Z_block(uint32_t base, uint32_t width, uint32_t x, uint32_t y, uint32_t value)
+void GraphicsSynthesizerThread::write_PSMCT24Z_block(uint8_t* mem, uint32_t base, uint32_t width, uint32_t x, uint32_t y, uint32_t value)
 {
     uint32_t addr = addr_PSMCT32Z(base / 256, width / 64, x, y);
-    uint32_t old_mem = *(uint32_t*)&local_mem[addr];
+    uint32_t old_mem = *(uint32_t*)&mem[addr];
     value &= 0xFFFFFF;
-    *(uint32_t*)&local_mem[addr] = (old_mem & 0xFF000000) | value;
+    *(uint32_t*)&mem[addr] = (old_mem & 0xFF000000) | value;
+    dirty_pages[addr >> 13] = true;
 }
 
-void GraphicsSynthesizerThread::write_PSMCT16_block(uint32_t base, uint32_t width, uint32_t x, uint32_t y, uint16_t value)
+void GraphicsSynthesizerThread::write_PSMCT16_block(uint8_t* mem, uint32_t base, uint32_t width, uint32_t x, uint32_t y, uint16_t value)
 {
     uint32_t addr = addr_PSMCT16(base / 256, width / 64, x, y);
-    *(uint16_t*)&local_mem[addr] = value;
+    *(uint16_t*)&mem[addr] = value;
+    dirty_pages[addr >> 13] = true;
 }
 
-void GraphicsSynthesizerThread::write_PSMCT16S_block(uint32_t base, uint32_t width, uint32_t x, uint32_t y, uint16_t value)
+void GraphicsSynthesizerThread::write_PSMCT16S_block(uint8_t* mem, uint32_t base, uint32_t width, uint32_t x, uint32_t y, uint16_t value)
 {
     uint32_t addr = addr_PSMCT16S(base / 256, width / 64, x, y);
-    *(uint16_t*)&local_mem[addr] = value;
+    *(uint16_t*)&mem[addr] = value;
+    dirty_pages[addr >> 13] = true;
 }
 
-void GraphicsSynthesizerThread::write_PSMCT16Z_block(uint32_t base, uint32_t width, uint32_t x, uint32_t y, uint16_t value)
+void GraphicsSynthesizerThread::write_PSMCT16Z_block(uint8_t* mem, uint32_t base, uint32_t width, uint32_t x, uint32_t y, uint16_t value)
 {
     uint32_t addr = addr_PSMCT16Z(base / 256, width / 64, x, y);
-    *(uint16_t*)&local_mem[addr] = value;
+    *(uint16_t*)&mem[addr] = value;
+    dirty_pages[addr >> 13] = true;
 }
 
-void GraphicsSynthesizerThread::write_PSMCT16SZ_block(uint32_t base, uint32_t width, uint32_t x, uint32_t y, uint16_t value)
+void GraphicsSynthesizerThread::write_PSMCT16SZ_block(uint8_t* mem, uint32_t base, uint32_t width, uint32_t x, uint32_t y, uint16_t value)
 {
     uint32_t addr = addr_PSMCT16SZ(base / 256, width / 64, x, y);
-    *(uint16_t*)&local_mem[addr] = value;
+    *(uint16_t*)&mem[addr] = value;
+    dirty_pages[addr >> 13] = true;
 }
 
-void GraphicsSynthesizerThread::write_PSMCT8_block(uint32_t base, uint32_t width, uint32_t x, uint32_t y, uint8_t value)
+void GraphicsSynthesizerThread::write_PSMCT8_block(uint8_t* mem, uint32_t base, uint32_t width, uint32_t x, uint32_t y, uint8_t value)
 {
     uint32_t addr = addr_PSMCT8(base / 256, width / 64, x, y);
-    local_mem[addr] = value;
+    mem[addr] = value;
+    dirty_pages[addr >> 13] = true;
 }
 
-void GraphicsSynthesizerThread::write_PSMCT4_block(uint32_t base, uint32_t width, uint32_t x, uint32_t y, uint8_t value)
+void GraphicsSynthesizerThread::write_PSMCT4_block(uint8_t* mem, uint32_t base, uint32_t width, uint32_t x, uint32_t y, uint8_t value)
 {
     uint32_t addr = addr_PSMCT4(base / 256, width / 64, x, y);
     int shift = (addr & 1) << 2;
     addr >>= 1;
 
-    local_mem[addr] = (uint8_t)((local_mem[addr] & (0xf0 >> shift)) | ((value & 0x0f) << shift));
+    mem[addr] = (uint8_t)((mem[addr] & (0xf0 >> shift)) | ((value & 0x0f) << shift));
+    dirty_pages[addr >> 13] = true;
 }
 
 //The "vertex kick" is the name given to the process of placing a vertex in the vertex queue.
@@ -1549,28 +1571,28 @@ void GraphicsSynthesizerThread::draw_pixel(int32_t x, int32_t y, uint32_t z, RGB
     switch (current_ctx->frame.format)
     {
         case 0x0:
-            write_PSMCT32_block(current_ctx->frame.base_pointer, current_ctx->frame.width, x, y, final_color);
+            write_PSMCT32_block(local_mem, current_ctx->frame.base_pointer, current_ctx->frame.width, x, y, final_color);
             break;
         case 0x1:
-            write_PSMCT24_block(current_ctx->frame.base_pointer, current_ctx->frame.width, x, y, final_color);
+            write_PSMCT24_block(local_mem, current_ctx->frame.base_pointer, current_ctx->frame.width, x, y, final_color);
             break;
         case 0x2:
-            write_PSMCT16_block(current_ctx->frame.base_pointer, current_ctx->frame.width, x, y, convert_color_down(final_color));
+            write_PSMCT16_block(local_mem, current_ctx->frame.base_pointer, current_ctx->frame.width, x, y, convert_color_down(final_color));
             break;
         case 0xA:
-            write_PSMCT16S_block(current_ctx->frame.base_pointer, current_ctx->frame.width, x, y, convert_color_down(final_color));
+            write_PSMCT16S_block(local_mem, current_ctx->frame.base_pointer, current_ctx->frame.width, x, y, convert_color_down(final_color));
             break;
         case 0x30:
-            write_PSMCT32Z_block(current_ctx->frame.base_pointer, current_ctx->frame.width, x, y, final_color);
+            write_PSMCT32Z_block(local_mem, current_ctx->frame.base_pointer, current_ctx->frame.width, x, y, final_color);
             break;
         case 0x31:
-            write_PSMCT24Z_block(current_ctx->frame.base_pointer, current_ctx->frame.width, x, y, final_color);
+            write_PSMCT24Z_block(local_mem, current_ctx->frame.base_pointer, current_ctx->frame.width, x, y, final_color);
             break;
         case 0x32:
-            write_PSMCT16Z_block(current_ctx->frame.base_pointer, current_ctx->frame.width, x, y, convert_color_down(final_color));
+            write_PSMCT16Z_block(local_mem, current_ctx->frame.base_pointer, current_ctx->frame.width, x, y, convert_color_down(final_color));
             break;
         case 0x3A:
-            write_PSMCT16SZ_block(current_ctx->frame.base_pointer, current_ctx->frame.width, x, y, convert_color_down(final_color));
+            write_PSMCT16SZ_block(local_mem, current_ctx->frame.base_pointer, current_ctx->frame.width, x, y, convert_color_down(final_color));
             break;
         default:
             Errors::die("Unknown FRAME format (%x) write attempted", current_ctx->frame.format);
@@ -1581,16 +1603,16 @@ void GraphicsSynthesizerThread::draw_pixel(int32_t x, int32_t y, uint32_t z, RGB
         switch (current_ctx->zbuf.format)
         {
             case 0x00:
-                write_PSMCT32Z_block(current_ctx->zbuf.base_pointer, current_ctx->frame.width, x, y, z);
+                write_PSMCT32Z_block(local_mem, current_ctx->zbuf.base_pointer, current_ctx->frame.width, x, y, z);
                 break;
             case 0x01:
-                write_PSMCT24Z_block(current_ctx->zbuf.base_pointer, current_ctx->frame.width, x, y, z & 0xFFFFFF);
+                write_PSMCT24Z_block(local_mem, current_ctx->zbuf.base_pointer, current_ctx->frame.width, x, y, z & 0xFFFFFF);
                 break;
             case 0x02:
-                write_PSMCT16Z_block(current_ctx->zbuf.base_pointer, current_ctx->frame.width, x, y, z & 0xFFFF);
+                write_PSMCT16Z_block(local_mem, current_ctx->zbuf.base_pointer, current_ctx->frame.width, x, y, z & 0xFFFF);
                 break;
             case 0x0A:
-                write_PSMCT16SZ_block(current_ctx->zbuf.base_pointer, current_ctx->frame.width, x, y, z & 0xFFFF);
+                write_PSMCT16SZ_block(local_mem, current_ctx->zbuf.base_pointer, current_ctx->frame.width, x, y, z & 0xFFFF);
                 break;
         }
     }
@@ -1719,6 +1741,8 @@ int32_t GraphicsSynthesizerThread::orient2D(const Vertex &v1, const Vertex &v2, 
 void GraphicsSynthesizerThread::render_triangle()
 {
     printf("[GS_t] Rendering triangle!\n");
+
+    cur_tex = get_cached_tex();
 
     Vertex v1 = vtx_queue[2]; v1.to_relative(current_ctx->xyoffset);
     Vertex v2 = vtx_queue[1]; v2.to_relative(current_ctx->xyoffset);
@@ -1903,7 +1927,7 @@ void GraphicsSynthesizerThread::render_triangle()
                                     u = (uint32_t) temp_u;
                                     v = (uint32_t) temp_v;
                                 }
-                                tex_lookup(u, v, tex_info);
+                                cached_tex_lookup(u, v, tex_info);
                                 draw_pixel(x, y, (uint32_t)z, tex_info.tex_color, current_PRMODE->alpha_blend);
                             }
                             else
@@ -1940,6 +1964,8 @@ void GraphicsSynthesizerThread::render_sprite()
     printf("[GS_t] Rendering sprite!\n");
     Vertex v1 = vtx_queue[1]; v1.to_relative(current_ctx->xyoffset);
     Vertex v2 = vtx_queue[0]; v2.to_relative(current_ctx->xyoffset);
+
+    cur_tex = get_cached_tex();
 
     TexLookupInfo tex_info;
     tex_info.vtx_color = vtx_queue[0].rgbaq;
@@ -1984,10 +2010,10 @@ void GraphicsSynthesizerThread::render_sprite()
                 {
                     pix_v = (pix_t * tex_info.tex_height) * 16.0;
                     pix_u = (pix_s * tex_info.tex_width) * 16.0;
-                    tex_lookup(pix_u, pix_v, tex_info);
+                    cached_tex_lookup(pix_u, pix_v, tex_info);
                 }
                 else
-                    tex_lookup(pix_u >> 16, pix_v >> 16, tex_info);
+                    cached_tex_lookup(pix_u >> 16, pix_v >> 16, tex_info);
                 draw_pixel(x, y, v2.z, tex_info.tex_color, current_PRMODE->alpha_blend);
             }
             else
@@ -2058,7 +2084,7 @@ void GraphicsSynthesizerThread::write_HWREG(uint64_t data)
         switch (BITBLTBUF.dest_format)
         {
             case 0x00:
-                write_PSMCT32_block(BITBLTBUF.dest_base, BITBLTBUF.dest_width, TRXPOS.int_dest_x, TRXPOS.int_dest_y, (data >> (i * 32)) & 0xFFFFFFFF);
+                write_PSMCT32_block(local_mem, BITBLTBUF.dest_base, BITBLTBUF.dest_width, TRXPOS.int_dest_x, TRXPOS.int_dest_y, (data >> (i * 32)) & 0xFFFFFFFF);
                 pixels_transferred++;
                 TRXPOS.int_dest_x++;
                 //printf("[GS_t] Write to $%08X of ", BITBLTBUF.dest_base + (dest_addr * 4));
@@ -2068,17 +2094,17 @@ void GraphicsSynthesizerThread::write_HWREG(uint64_t data)
                 unpack_PSMCT24(data, i, false);
                 break;
             case 0x02:
-                write_PSMCT16_block(BITBLTBUF.dest_base, BITBLTBUF.dest_width, TRXPOS.int_dest_x, TRXPOS.int_dest_y, (data >> (i * 16)) & 0xFFFF);
+                write_PSMCT16_block(local_mem, BITBLTBUF.dest_base, BITBLTBUF.dest_width, TRXPOS.int_dest_x, TRXPOS.int_dest_y, (data >> (i * 16)) & 0xFFFF);
                 pixels_transferred++;
                 TRXPOS.int_dest_x++;
                 break;
             case 0xA:
-                write_PSMCT16S_block(BITBLTBUF.dest_base, BITBLTBUF.dest_width, TRXPOS.int_dest_x, TRXPOS.int_dest_y, (data >> (i * 16)) & 0xFFFF);
+                write_PSMCT16S_block(local_mem, BITBLTBUF.dest_base, BITBLTBUF.dest_width, TRXPOS.int_dest_x, TRXPOS.int_dest_y, (data >> (i * 16)) & 0xFFFF);
                 pixels_transferred++;
                 TRXPOS.int_dest_x++;
                 break;
             case 0x13:
-                write_PSMCT8_block(BITBLTBUF.dest_base, BITBLTBUF.dest_width, TRXPOS.int_dest_x, TRXPOS.int_dest_y,
+                write_PSMCT8_block(local_mem, BITBLTBUF.dest_base, BITBLTBUF.dest_width, TRXPOS.int_dest_x, TRXPOS.int_dest_y,
                                    (data >> (i * 8)) & 0xFF);
                 //printf("[GS_t] Write to $%08X\n", dest_addr);
                 pixels_transferred++;
@@ -2091,7 +2117,7 @@ void GraphicsSynthesizerThread::write_HWREG(uint64_t data)
                     value >>= 4;
                 else
                     value &= 0xF;
-                write_PSMCT4_block(BITBLTBUF.dest_base, BITBLTBUF.dest_width, TRXPOS.int_dest_x, TRXPOS.int_dest_y,
+                write_PSMCT4_block(local_mem, BITBLTBUF.dest_base, BITBLTBUF.dest_width, TRXPOS.int_dest_x, TRXPOS.int_dest_y,
                                    value);
                 pixels_transferred++;
                 TRXPOS.int_dest_x++;
@@ -2103,7 +2129,7 @@ void GraphicsSynthesizerThread::write_HWREG(uint64_t data)
                 value <<= 24;
                 value |= read_PSMCT32_block(BITBLTBUF.dest_base, BITBLTBUF.dest_width, TRXPOS.int_dest_x, TRXPOS.int_dest_y)
                         & 0x00FFFFFF;
-                write_PSMCT32_block(BITBLTBUF.dest_base, BITBLTBUF.dest_width, TRXPOS.int_dest_x, TRXPOS.int_dest_y, value);
+                write_PSMCT32_block(local_mem, BITBLTBUF.dest_base, BITBLTBUF.dest_width, TRXPOS.int_dest_x, TRXPOS.int_dest_y, value);
                 //printf("[GS_t] Write to $%08X of ", BITBLTBUF.dest_base + (dest_addr * 4));
                 pixels_transferred++;
                 TRXPOS.int_dest_x++;
@@ -2124,7 +2150,7 @@ void GraphicsSynthesizerThread::write_HWREG(uint64_t data)
                 }
                 value |= read_PSMCT32_block(BITBLTBUF.dest_base, BITBLTBUF.dest_width, TRXPOS.int_dest_x, TRXPOS.int_dest_y)
                         & 0xF0FFFFFF;
-                write_PSMCT32_block(BITBLTBUF.dest_base, BITBLTBUF.dest_width, TRXPOS.int_dest_x, TRXPOS.int_dest_y, value);
+                write_PSMCT32_block(local_mem, BITBLTBUF.dest_base, BITBLTBUF.dest_width, TRXPOS.int_dest_x, TRXPOS.int_dest_y, value);
                 //printf("[GS_t] Write to $%08X of ", BITBLTBUF.dest_base + (dest_addr * 4));
                 //printf("$%08X\n", value);
                 pixels_transferred++;
@@ -2146,7 +2172,7 @@ void GraphicsSynthesizerThread::write_HWREG(uint64_t data)
                 }
                 value |= read_PSMCT32_block(BITBLTBUF.dest_base, BITBLTBUF.dest_width, TRXPOS.int_dest_x, TRXPOS.int_dest_y)
                         & 0x0FFFFFFF;
-                write_PSMCT32_block(BITBLTBUF.dest_base, BITBLTBUF.dest_width, TRXPOS.int_dest_x, TRXPOS.int_dest_y, value);
+                write_PSMCT32_block(local_mem, BITBLTBUF.dest_base, BITBLTBUF.dest_width, TRXPOS.int_dest_x, TRXPOS.int_dest_y, value);
                 //printf("[GS_t] Write to $%08X of ", BITBLTBUF.dest_base + (dest_addr * 4));
                 //printf("$%08X\n", value);
                 pixels_transferred++;
@@ -2185,10 +2211,10 @@ void GraphicsSynthesizerThread::unpack_PSMCT24(uint64_t data, int offset, bool z
         if (PSMCT24_unpacked_count == 3)
         {
             if (z_format)
-                write_PSMCT24Z_block(BITBLTBUF.dest_base, BITBLTBUF.dest_width, TRXPOS.int_dest_x,
+                write_PSMCT24Z_block(local_mem, BITBLTBUF.dest_base, BITBLTBUF.dest_width, TRXPOS.int_dest_x,
                                      TRXPOS.int_dest_y, PSMCT24_color);
             else
-                write_PSMCT24_block(BITBLTBUF.dest_base, BITBLTBUF.dest_width, TRXPOS.int_dest_x,
+                write_PSMCT24_block(local_mem, BITBLTBUF.dest_base, BITBLTBUF.dest_width, TRXPOS.int_dest_x,
                     TRXPOS.int_dest_y, PSMCT24_color);
             PSMCT24_color = 0;
             PSMCT24_unpacked_count = 0;
@@ -2211,7 +2237,7 @@ void GraphicsSynthesizerThread::host_to_host()
             case 0x01: //PSMCT24
                 data = read_PSMCT32_block(BITBLTBUF.source_base, BITBLTBUF.source_width,
                                           TRXPOS.int_source_x, TRXPOS.int_source_y);
-                write_PSMCT32_block(BITBLTBUF.dest_base, BITBLTBUF.dest_width, TRXPOS.int_dest_x, TRXPOS.int_dest_y, data);
+                write_PSMCT32_block(local_mem, BITBLTBUF.dest_base, BITBLTBUF.dest_width, TRXPOS.int_dest_x, TRXPOS.int_dest_y, data);
                 pixels_transferred++;
                 TRXPOS.int_dest_x++;
                 TRXPOS.int_source_x++;
@@ -2219,7 +2245,7 @@ void GraphicsSynthesizerThread::host_to_host()
             case 0x13:
                 data = read_PSMCT8_block(BITBLTBUF.source_base, BITBLTBUF.source_width,
                                          TRXPOS.int_source_x, TRXPOS.int_source_y);
-                write_PSMCT8_block(BITBLTBUF.dest_base, BITBLTBUF.dest_width, TRXPOS.int_dest_x, TRXPOS.int_dest_y, data);
+                write_PSMCT8_block(local_mem, BITBLTBUF.dest_base, BITBLTBUF.dest_width, TRXPOS.int_dest_x, TRXPOS.int_dest_y, data);
                 pixels_transferred++;
                 TRXPOS.int_dest_x++;
                 TRXPOS.int_source_x++;
@@ -2227,7 +2253,7 @@ void GraphicsSynthesizerThread::host_to_host()
             case 0x14:
                 data = read_PSMCT4_block(BITBLTBUF.source_base, BITBLTBUF.source_width,
                                           TRXPOS.int_source_x, TRXPOS.int_source_y);
-                write_PSMCT4_block(BITBLTBUF.dest_base, BITBLTBUF.dest_width, TRXPOS.int_dest_x, TRXPOS.int_dest_y, data);
+                write_PSMCT4_block(local_mem, BITBLTBUF.dest_base, BITBLTBUF.dest_width, TRXPOS.int_dest_x, TRXPOS.int_dest_y, data);
                 pixels_transferred++;
                 TRXPOS.int_dest_x++;
                 TRXPOS.int_source_x++;
@@ -2328,6 +2354,76 @@ void GraphicsSynthesizerThread::calculate_LOD(TexLookupInfo &info)
         info.tex_width = max((int)info.tex_width, 1);
         info.tex_height = max((int)info.tex_height, 1);
     }
+}
+
+CachedTexture* GraphicsSynthesizerThread::get_cached_tex()
+{
+    TEX0 cur_tex0 = current_ctx->tex0;
+    uint32_t base = cur_tex0.texture_base / 256;
+
+    for (;;)
+    {
+        CachedTexture* tex = tex_cache[base];
+        TEX0 cmp_tex0 = tex->tex0;
+
+        if (!tex || dirty_pages[cur_tex0.texture_base / 8192])
+            break;
+
+        if (cur_tex0.format != cmp_tex0.format || cur_tex0.width != cmp_tex0.width)
+            break;
+
+        if (cur_tex0.tex_height != cmp_tex0.tex_height || cur_tex0.tex_width != cmp_tex0.tex_width)
+            break;
+
+        if (cur_tex0.CLUT_base != cmp_tex0.CLUT_base || cur_tex0.CLUT_format != cmp_tex0.CLUT_format)
+            break;
+
+        if (cur_tex0.use_alpha != cmp_tex0.use_alpha || cur_tex0.use_CSM2 != cmp_tex0.use_CSM2)
+            break;
+
+        if (cur_tex0.CLUT_offset != cmp_tex0.CLUT_offset)
+            break;
+
+        if (TEXA.alpha0 != tex->texa.alpha0 || TEXA.alpha1 != tex->texa.alpha1
+                || TEXA.trans_black != tex->texa.trans_black)
+            break;
+
+        return tex;
+    }
+
+    CachedTexture* new_tex = new CachedTexture;
+    new_tex->mem = new uint8_t[(cur_tex0.tex_width + 1) * (cur_tex0.tex_height + 1) * 4];
+    new_tex->tex0 = cur_tex0;
+    new_tex->texa = TEXA;
+
+    TexLookupInfo tex_info;
+
+    printf("Creating new texture\n");
+
+    for (uint16_t v = 0; v <= cur_tex0.tex_height; v++)
+    {
+        for (uint16_t u = 0; u <= cur_tex0.tex_width; u++)
+        {
+            tex_lookup_int(u, v, tex_info);
+            uint32_t color = tex_info.tex_color.r;
+            color |= tex_info.tex_color.g << 8;
+            color |= tex_info.tex_color.b << 16;
+            color |= tex_info.tex_color.a << 24;
+            *(uint32_t*)&new_tex->mem[(u + (v * (cur_tex0.tex_width + 1))) * 4] = color;
+            printf("base: $%08X u: $%04X v: $%04X color: $%08X\n", current_ctx->tex0.texture_base, u, v, color);
+        }
+    }
+
+    dirty_pages[cur_tex0.texture_base / 8192] = false;
+    tex_cache[base] = new_tex;
+
+    return new_tex;
+}
+
+void GraphicsSynthesizerThread::delete_tex(CachedTexture *tex)
+{
+    delete[] tex->mem;
+    delete tex;
 }
 
 void GraphicsSynthesizerThread::tex_lookup(int16_t u, int16_t v, TexLookupInfo& info)
@@ -2431,6 +2527,164 @@ void GraphicsSynthesizerThread::tex_lookup(int16_t u, int16_t v, TexLookupInfo& 
         info.tex_color.g = ((info.tex_color.g * fog) >> 8) + ((fog2 * FOGCOL.g) >> 8);
         info.tex_color.b = ((info.tex_color.b * fog) >> 8) + ((fog2 * FOGCOL.b) >> 8);
     }
+}
+
+void GraphicsSynthesizerThread::cached_tex_lookup(int16_t u, int16_t v, TexLookupInfo& info)
+{
+    if (current_ctx->tex1.filter_larger && info.LOD <= 0.0)
+    {
+        RGBAQ_REG a, b, c, d;
+        int16_t uu = (u - 8) >> 4;
+        int16_t vv = (v - 8) >> 4;
+
+        cached_tex_lookup_int(uu, vv, info);
+        a = info.tex_color;
+
+        cached_tex_lookup_int(uu+1, vv, info);
+        b = info.tex_color;
+
+        cached_tex_lookup_int(uu, vv+1, info);
+        c = info.tex_color;
+
+        cached_tex_lookup_int(uu+1, vv+1, info);
+        d = info.tex_color;
+
+        double alpha = ((u - 8) & 0xF) * (1.0 / ((double)0xF));
+        double beta = ((v - 8) & 0xF) * (1.0 / ((double)0xF));
+        double alpha_s = 1.0 - alpha;
+        double beta_s = 1.0 - beta;
+        info.tex_color.r = alpha_s * beta_s*a.r + alpha * beta_s*b.r + alpha_s * beta*c.r + alpha * beta*d.r;
+        info.tex_color.g = alpha_s * beta_s*a.g + alpha * beta_s*b.g + alpha_s * beta*c.g + alpha * beta*d.g;
+        info.tex_color.b = alpha_s * beta_s*a.b + alpha * beta_s*b.b + alpha_s * beta*c.b + alpha * beta*d.b;
+        info.tex_color.a = alpha_s * beta_s*a.a + alpha * beta_s*b.a + alpha_s * beta*c.a + alpha * beta*d.a;
+    }
+    else
+        cached_tex_lookup_int(u >> 4, v >> 4, info);
+
+    switch (current_ctx->tex0.color_function)
+    {
+        case 0: //Modulate
+            info.tex_color.r = (info.tex_color.r * info.vtx_color.r) >> 7;
+            info.tex_color.g = (info.tex_color.g * info.vtx_color.g) >> 7;
+            info.tex_color.b = (info.tex_color.b * info.vtx_color.b) >> 7;
+            if (current_ctx->tex0.use_alpha)
+                info.tex_color.a = (info.tex_color.a * info.vtx_color.a) >> 7;
+            else
+                info.tex_color.a = info.vtx_color.a;
+
+            //Clamp texture colors
+            if (info.tex_color.r > 0xFF)
+                info.tex_color.r = 0xFF;
+            if (info.tex_color.g > 0xFF)
+                info.tex_color.g = 0xFF;
+            if (info.tex_color.b > 0xFF)
+                info.tex_color.b = 0xFF;
+            if (info.tex_color.a > 0xFF)
+                info.tex_color.a = 0xFF;
+            break;
+        case 1: //Decal
+            if (!current_ctx->tex0.use_alpha)
+                info.tex_color.a = info.vtx_color.a;
+            break;
+        case 2: //Highlight
+            info.tex_color.r = ((info.tex_color.r * info.vtx_color.r) >> 7) + info.vtx_color.a;
+            info.tex_color.g = ((info.tex_color.g * info.vtx_color.g) >> 7) + info.vtx_color.a;
+            info.tex_color.b = ((info.tex_color.b * info.vtx_color.b) >> 7) + info.vtx_color.a;
+            if (!current_ctx->tex0.use_alpha)
+                info.tex_color.a = info.vtx_color.a;
+            else
+                info.tex_color.a += info.vtx_color.a;
+
+            if (info.tex_color.r > 0xFF)
+                info.tex_color.r = 0xFF;
+            if (info.tex_color.g > 0xFF)
+                info.tex_color.g = 0xFF;
+            if (info.tex_color.b > 0xFF)
+                info.tex_color.b = 0xFF;
+            if (info.tex_color.a > 0xFF)
+                info.tex_color.a = 0xFF;
+            break;
+        case 3: //Highlight2
+            info.tex_color.r = ((info.tex_color.r * info.vtx_color.r) >> 7) + info.vtx_color.a;
+            info.tex_color.g = ((info.tex_color.g * info.vtx_color.g) >> 7) + info.vtx_color.a;
+            info.tex_color.b = ((info.tex_color.b * info.vtx_color.b) >> 7) + info.vtx_color.a;
+            if (!current_ctx->tex0.use_alpha)
+                info.tex_color.a = info.vtx_color.a;
+
+            if (info.tex_color.r > 0xFF)
+                info.tex_color.r = 0xFF;
+            if (info.tex_color.g > 0xFF)
+                info.tex_color.g = 0xFF;
+            if (info.tex_color.b > 0xFF)
+                info.tex_color.b = 0xFF;
+            break;
+        default:
+            Errors::die("[GS_t] Unrecognized texture color function $%02X", current_ctx->tex0.color_function);
+    }
+
+    if (current_PRMODE->fog)
+    {
+        uint16_t fog = info.fog;
+        uint16_t fog2 = 0xFF - info.fog;
+        info.tex_color.r = ((info.tex_color.r * fog) >> 8) + ((fog2 * FOGCOL.r) >> 8);
+        info.tex_color.g = ((info.tex_color.g * fog) >> 8) + ((fog2 * FOGCOL.g) >> 8);
+        info.tex_color.b = ((info.tex_color.b * fog) >> 8) + ((fog2 * FOGCOL.b) >> 8);
+    }
+}
+
+void GraphicsSynthesizerThread::cached_tex_lookup_int(int16_t u, int16_t v, TexLookupInfo &info)
+{
+    switch (current_ctx->clamp.wrap_s)
+    {
+        case 0:
+            u &= info.tex_width - 1;
+            break;
+        case 1:
+            if (u > info.tex_width)
+                u = info.tex_width;
+            else if (u < 0)
+                u = 0;
+            break;
+        case 2:
+            if (u > (current_ctx->clamp.max_u >> info.mipmap_level))
+                u = current_ctx->clamp.max_u >> info.mipmap_level;
+            else if (u < (current_ctx->clamp.min_u >> info.mipmap_level))
+                u = current_ctx->clamp.min_u >> info.mipmap_level;
+            break;
+        case 3:
+            //Mask should only apply to integer component
+            u = (u & (current_ctx->clamp.min_u | 0xF)) | current_ctx->clamp.max_u;
+            break;
+    }
+    switch (current_ctx->clamp.wrap_t)
+    {
+        case 0:
+            v &= info.tex_height - 1;
+            break;
+        case 1:
+            if (v > info.tex_height)
+                v = info.tex_height;
+            else if (v < 0)
+                v = 0;
+            break;
+        case 2:
+            if (v > (current_ctx->clamp.max_v >> info.mipmap_level))
+                v = current_ctx->clamp.max_v >> info.mipmap_level;
+            else if (v < (current_ctx->clamp.min_v >> info.mipmap_level))
+                v = (current_ctx->clamp.min_v >> info.mipmap_level);
+            break;
+        case 3:
+            v = (v & (current_ctx->clamp.min_v | 0xF)) | current_ctx->clamp.max_v;
+            break;
+    }
+
+    uint32_t color = *(uint32_t*)&cur_tex->mem[(u + (v * (info.tex_width + 1))) * 4];
+    printf("base: $%08X u: $%04X v: $%04X color: $%08X\n", current_ctx->tex0.texture_base, u, v, color);
+    //uint32_t color = 0;
+    info.tex_color.r = color & 0xFF;
+    info.tex_color.g = (color >> 8) & 0xFF;
+    info.tex_color.b = (color >> 16) & 0xFF;
+    info.tex_color.a = color >> 24;
 }
 
 void GraphicsSynthesizerThread::tex_lookup_int(int16_t u, int16_t v, TexLookupInfo& info)
