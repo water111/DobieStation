@@ -48,7 +48,7 @@ struct DecodedRegs
     uint8_t vf_read0[2], vf_read1[2];
     uint8_t vf_read0_field[2], vf_read1_field[2];
 
-    uint8_t vi_read0, vi_read1, vi_write;
+    uint8_t vi_read0, vi_read1, vi_write, vi_write_from_load;
 
     void reset();
 };
@@ -109,6 +109,7 @@ class VectorUnit
 
         uint32_t CLIP_pipeline[4];
         uint64_t MAC_pipeline[4];
+        uint16_t ILW_pipeline[4]; // integer register loads
         uint32_t* CLIP_flags;
         uint64_t* MAC_flags; //pointer to last element in the pipeline; the register accessible to programs
         uint16_t new_MAC_flags; //to be placed in the pipeline

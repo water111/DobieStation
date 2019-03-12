@@ -65,6 +65,7 @@ void DecodedRegs::reset()
 
     vi_read0 = 0; vi_read1 = 0;
     vi_write = 0;
+    vi_write_from_load = 0;
 }
 
 VectorUnit::VectorUnit(int id, Emulator* e) : id(id), e(e), gif(nullptr)
@@ -324,9 +325,9 @@ void VectorUnit::handle_XGKICK()
  */
 void VectorUnit::check_for_FMAC_stall()
 {
-    if (decoder.vf_read0[0] == 0 && decoder.vf_read1[0] == 0
-        && decoder.vf_read0[1] == 0 && decoder.vf_read1[1] == 0)
-        return;
+//    if (decoder.vf_read0[0] == 0 && decoder.vf_read1[0] == 0
+//        && decoder.vf_read0[1] == 0 && decoder.vf_read1[1] == 0 && decoder.vi_read0 == 0 && decoder.vi_read1 == 0)
+//        return;
 
     for (int i = 0; i < 3; i++)
     {
@@ -380,6 +381,19 @@ void VectorUnit::check_for_FMAC_stall()
                 }
             }
         }
+
+
+
+        if(ILW_pipeline[i])
+        {
+            printf("lr %d, (%d %d)\n", ILW_pipeline[i], decoder.vi_read0, decoder.vi_read1);
+            if(ILW_pipeline[i] == decoder.vi_read0 || ILW_pipeline[i] == decoder.vi_read1)
+            {
+                printf("INTEGER LOAD HAZARD STALL!\n");
+                stall_found = true;
+            }
+        }
+
         if (stall_found)
         {
             //printf("FMAC stall at $%08X for %d cycles!\n", PC, 3 - i);
@@ -528,6 +542,13 @@ void VectorUnit::update_mac_pipeline()
     CLIP_pipeline[2] = CLIP_pipeline[1];
     CLIP_pipeline[1] = CLIP_pipeline[0];
     CLIP_pipeline[0] = clip_flags;
+
+    ILW_pipeline[3] = ILW_pipeline[2];
+    ILW_pipeline[2] = ILW_pipeline[1];
+    ILW_pipeline[1] = ILW_pipeline[0];
+    ILW_pipeline[0] = decoder.vi_write_from_load;
+    //ILW_pipeline[0] = new_ILW;
+
 
     if(updatestatus)
         update_status();

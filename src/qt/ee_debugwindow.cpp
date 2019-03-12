@@ -639,6 +639,32 @@ void EEDebugWindow::memory_context_menu(const QPoint &pos)
     menu.exec(QCursor::pos());
 }
 
+std::string EEDebugWindow::get_jak1_symbol(uint32_t instr)
+{
+    try
+    {
+        int16_t offset = *(int16_t*)(&instr);
+        //printf("offset %d\n", offset);
+        uint32_t s7 = ee->get_gpr<uint32_t>(23);
+        uint32_t symbol = s7 + offset + 0xff38;
+        //printf("symbol 0x%x\n", symbol);
+        uint32_t gstring = ee->read32(symbol);
+        //printf("gstring 0x%x\n", gstring);
+        char gstring_buffer[128];
+        for(uint32_t i = 0; i < 128; i++)
+        {
+            gstring_buffer[i] = ee->read8(gstring + i + 4);
+            //printf("c[%02d] = %c\n", i, gstring_buffer[i]);
+        }
+        return std::string(gstring_buffer);
+    }
+    catch (std::exception& e)
+    {
+        return "error when reading symbol!";
+    }
+
+}
+
 void EEDebugWindow::instruction_context_menu(const QPoint &pos)
 {
     if(emulation_running()) return;
@@ -667,6 +693,11 @@ void EEDebugWindow::instruction_context_menu(const QPoint &pos)
                 add_breakpoint(and_bp);
         }
 
+    });
+
+    menu.addAction(tr("Jak 1 Symbol Name"), this, [&]{
+       uint32_t instr = ee->read32(addr);
+       printf("%s\n", get_jak1_symbol(instr).c_str());
     });
 
 

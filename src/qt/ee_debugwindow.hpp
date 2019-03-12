@@ -80,6 +80,8 @@ private slots:
         on_memory_go_button_clicked();
     }
 
+    std::string get_jak1_symbol(uint32_t instr);
+
 private:
     std::vector<EERegisterDefinition> ee_registers;
     std::vector<IOPRegisterDefinition> iop_registers;

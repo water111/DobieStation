@@ -5,6 +5,16 @@
 
 #define printf(fmt, ...)(0)
 
+#define _ft_ ((instr >> 16) & 0x1F)
+#define _fs_ ((instr >> 11) & 0x1F)
+#define _fd_ ((instr >> 6) & 0x1F)
+
+#define _field ((instr >> 21) & 0xF)
+
+#define _it_ (_ft_ & 0xF)
+#define _is_ (_fs_ & 0xF)
+#define _id_ (_fd_ & 0xF)
+
 namespace VU_Interpreter
 {
 typedef void(VectorUnit::*vu_op)(uint32_t);
@@ -1200,6 +1210,8 @@ void iadd(VectorUnit &vu, uint32_t instr)
     uint8_t reg1 = (instr >> 11) & 0x1F;
     uint8_t reg2 = (instr >> 16) & 0x1F;*/
     vu.decoder.vi_write = (instr >> 6) & 0xF;
+    vu.decoder.vi_read0 = _is_;
+    vu.decoder.vi_read1 = _it_;
     lower_op = &VectorUnit::iadd;
 }
 
@@ -1209,6 +1221,8 @@ void isub(VectorUnit &vu, uint32_t instr)
     uint8_t reg1 = (instr >> 11) & 0x1F;
     uint8_t reg2 = (instr >> 16) & 0x1F;*/
     vu.decoder.vi_write = (instr >> 6) & 0xF;
+    vu.decoder.vi_read0 = _is_;
+    vu.decoder.vi_read1 = _it_;
     lower_op = &VectorUnit::isub;
 }
 
@@ -1219,6 +1233,7 @@ void iaddi(VectorUnit &vu, uint32_t instr)
     uint8_t source = (instr >> 11) & 0x1F;
     uint8_t dest = (instr >> 16) & 0x1F;*/
     vu.decoder.vi_write = (instr >> 16) & 0xF;
+    vu.decoder.vi_read0 = _is_;
     lower_op = &VectorUnit::iaddi;
 }
 
@@ -1228,6 +1243,8 @@ void iand(VectorUnit &vu, uint32_t instr)
     uint8_t reg1 = (instr >> 11) & 0x1F;
     uint8_t reg2 = (instr >> 16) & 0x1F;*/
     vu.decoder.vi_write = (instr >> 6) & 0xF;
+    vu.decoder.vi_read0 = _is_;
+    vu.decoder.vi_read1 = _it_;
     lower_op = &VectorUnit::iand;
 }
 
@@ -1237,6 +1254,8 @@ void ior(VectorUnit &vu, uint32_t instr)
     uint8_t reg1 = (instr >> 11) & 0x1F;
     uint8_t reg2 = (instr >> 16) & 0x1F;*/
     vu.decoder.vi_write = (instr >> 6) & 0xF;
+    vu.decoder.vi_read0 = _is_;
+    vu.decoder.vi_read1 = _it_;
     lower_op = &VectorUnit::ior;
 }
 
@@ -1381,6 +1400,7 @@ void lqi(VectorUnit &vu, uint32_t instr)
     vu.decoder.vf_write[1] = ft;
     vu.decoder.vf_write_field[1] = field;
     vu.decoder.vi_write = is;
+    vu.decoder.vi_read0 = _is_;
     lower_op = &VectorUnit::lqi;
 }
 
@@ -1392,6 +1412,7 @@ void sqi(VectorUnit& vu, uint32_t instr)
     vu.decoder.vf_read0[1] = fs;
     vu.decoder.vf_read0_field[1] = dest_field;
     vu.decoder.vi_write = it;
+    vu.decoder.vi_read0 = _it_;
     lower_op = &VectorUnit::sqi;
 }
 
@@ -1403,6 +1424,7 @@ void lqd(VectorUnit &vu, uint32_t instr)
     vu.decoder.vf_write[1] = ft;
     vu.decoder.vf_write_field[1] = dest_field;
     vu.decoder.vi_write = is;
+    vu.decoder.vi_read0 = _is_;
     lower_op = &VectorUnit::lqd;
 }
 
@@ -1414,6 +1436,7 @@ void sqd(VectorUnit &vu, uint32_t instr)
     vu.decoder.vf_read0[1] = fs;
     vu.decoder.vf_read0_field[1] = dest_field;
     vu.decoder.vi_write = it;
+    vu.decoder.vi_read0 = _it_;
     lower_op = &VectorUnit::sqd;
 }
 
@@ -1483,6 +1506,7 @@ void mfir(VectorUnit &vu, uint32_t instr)
     vu.decoder.vi_read0 = is;
     vu.decoder.vf_write[1] = ft;
     vu.decoder.vf_write_field[1] = dest_field;
+    vu.decoder.vi_read0 = _is_;
     lower_op = &VectorUnit::mfir;
 }
 
@@ -1492,6 +1516,8 @@ void ilwr(VectorUnit &vu, uint32_t instr)
     uint8_t it = (instr >> 16) & 0x1F;
     uint8_t field = (instr >> 21) & 0xF;*/
     vu.decoder.vi_write = (instr >> 16) & 0xF;
+    vu.decoder.vi_write_from_load = _it_;
+    vu.decoder.vi_read0 = _is_;
     lower_op = &VectorUnit::ilwr;
 }
 
@@ -1500,6 +1526,8 @@ void iswr(VectorUnit &vu, uint32_t instr)
     /*uint8_t is = (instr >> 11) & 0x1F;
     uint8_t it = (instr >> 16) & 0x1F;
     uint8_t field = (instr >> 21) & 0xF;*/
+    vu.decoder.vi_read0 = _is_;
+    vu.decoder.vi_read1 = _it_;
     lower_op = &VectorUnit::iswr;
 }
 
@@ -1570,6 +1598,7 @@ void xitop(VectorUnit &vu, uint32_t instr)
 void xgkick(VectorUnit &vu, uint32_t instr)
 {
     uint8_t is = (instr >> 11) & 0x1F;
+    vu.decoder.vi_read0 = _is_;
     lower_op = &VectorUnit::xgkick;
 }
 
@@ -1746,6 +1775,7 @@ void lq(VectorUnit &vu, uint32_t instr)
 
     vu.decoder.vf_write[1] = ft;
     vu.decoder.vf_write_field[1] = field;
+    vu.decoder.vi_read0 = _is_;
     lower_op = &VectorUnit::lq;
 }
 
@@ -1757,6 +1787,7 @@ void sq(VectorUnit &vu, uint32_t instr)
 
     vu.decoder.vf_read0[1] = fs;
     vu.decoder.vf_read0_field[1] = field;
+    vu.decoder.vi_read0 = _it_;
     lower_op = &VectorUnit::sq;
 }
 
@@ -1769,6 +1800,8 @@ void ilw(VectorUnit &vu, uint32_t instr)
     uint8_t it = (instr >> 16) & 0x1F;
     uint8_t field = (instr >> 21) & 0xF;*/
     vu.decoder.vi_write = (instr >> 16) & 0xF;
+    vu.decoder.vi_write_from_load = _it_;
+    vu.decoder.vi_read0 = _is_;
     lower_op = &VectorUnit::ilw;
 }
 
@@ -1780,6 +1813,8 @@ void isw(VectorUnit &vu, uint32_t instr)
     uint8_t is = (instr >> 11) & 0x1F;
     uint8_t it = (instr >> 16) & 0x1F;
     uint8_t field = (instr >> 21) & 0xF;*/
+    vu.decoder.vi_read0 = _is_;
+    vu.decoder.vi_read1 = _it_;
     lower_op = &VectorUnit::isw;
 }
 
@@ -1789,6 +1824,7 @@ void iaddiu(VectorUnit &vu, uint32_t instr)
     imm |= ((instr >> 21) & 0xF) << 11;
     uint8_t source = (instr >> 11) & 0x1F;
     uint8_t dest = (instr >> 16) & 0x1F;*/
+    vu.decoder.vi_read0 = _is_;
     vu.decoder.vi_write = (instr >> 16) & 0xF;
     lower_op = &VectorUnit::iaddiu;
 }
@@ -1800,6 +1836,7 @@ void isubiu(VectorUnit &vu, uint32_t instr)
     uint8_t source = (instr >> 11) & 0x1F;
     uint8_t dest = (instr >> 16) & 0x1F;*/
     vu.decoder.vi_write = (instr >> 16) & 0xF;
+    vu.decoder.vi_read0 = _is_;
     lower_op = &VectorUnit::isubiu;
 }
 
@@ -1835,16 +1872,19 @@ void fsand(VectorUnit &vu, uint32_t instr)
 
 void fmeq(VectorUnit &vu, uint32_t instr)
 {
+    vu.decoder.vi_read0 = _is_;
     lower_op = &VectorUnit::fmeq;
 }
 
 void fmand(VectorUnit &vu, uint32_t instr)
 {
+    vu.decoder.vi_read0 = _is_;
     lower_op = &VectorUnit::fmand;
 }
 
 void fmor(VectorUnit &vu, uint32_t instr)
 {
+    vu.decoder.vi_read0 = _is_;
     lower_op = &VectorUnit::fmor;
 }
 
