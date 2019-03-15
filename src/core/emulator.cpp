@@ -81,7 +81,8 @@ void Emulator::run()
     
     while (instructions_ran < CYCLES_PER_FRAME)
     {
-        int cycles = cpu.run(16);
+        int cycles = cpu.run(18);
+        //cycles/=2;
         instructions_ran += cycles;
         cycles >>= 1;
         dmac.run(cycles);
@@ -91,8 +92,8 @@ void Emulator::run()
         vif1.update(cycles);
         gif.run(cycles);
         vu0.run(cycles);
-        //vu1.run(cycles);
-        vu1.run_jit(cycles);
+        vu1.run(cycles);
+        //vu1.run_jit(cycles);
         cycles >>= 2;
         iop_timers.run(cycles);
         iop_dma.run(cycles);

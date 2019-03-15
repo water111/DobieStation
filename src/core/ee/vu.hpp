@@ -48,9 +48,111 @@ struct DecodedRegs
     uint8_t vf_read0[2], vf_read1[2];
     uint8_t vf_read0_field[2], vf_read1_field[2];
 
-    uint8_t vi_read0, vi_read1, vi_write;
+    uint8_t vi_read0, vi_read1, vi_write, vi_write_from_load;
 
     void reset();
+};
+
+struct VuIntBranchPipelineEntry
+{
+    uint8_t write_reg;    // which int reg was written? (0 for no reg)
+    VU_I old_value;   // what value was overwritten?
+    bool read_and_write;  // did we also read the reg?
+
+    void clear()
+    {
+        read_and_write = false;
+        write_reg = 0;
+        old_value = {0};
+    }
+};
+
+struct VuIntBranchPipeline
+{
+    static constexpr int pipeline_length = 5;
+    VuIntBranchPipelineEntry pipeline[pipeline_length];
+    VuIntBranchPipelineEntry next;
+
+    void reset()
+    {
+        flush();
+    }
+
+
+    void write_reg(uint8_t reg, VU_I old_value, bool also_read)
+    {
+        next.read_and_write = also_read;
+        next.write_reg = reg;
+        next.old_value = old_value;
+    }
+
+    void update()
+    {
+        pipeline[0] = next;
+        for(int i = 0; i < pipeline_length - 1; i++)
+            pipeline[i+1] = pipeline[i];
+        next.clear();
+    }
+
+    void flush()
+    {
+        for(auto& p : pipeline)
+            p.clear();
+        //next.clear(); // todo ??
+    }
+
+    void print()
+    {
+        printf("[VU INTEGER BRANCH CONDITION HAZARD]\n");
+        for(auto& p : pipeline)
+            printf("reg: %d, value: 0x%x, chain?: %d\n", p.write_reg, p.old_value.u, p.read_and_write);
+    }
+
+    std::pair<bool, VU_I> read_reg_for_branch(uint8_t reg, uint8_t vu_id, uint16_t PC)
+    {
+        VU_I result = {0};
+        bool branch_condition_hazard = false;
+        bool chain_of_doom = false;
+//        for(int i = 0; i < pipeline_length; i++)
+//        {
+//            // check to see if we're reading a register which is written to:
+//            if(pipeline[i].write_reg && (reg == pipeline[i].write_reg))
+//            {
+//                branch_condition_hazard = true;
+//                result = pipeline[i].old_value;
+//                if(!pipeline[i].read_and_write)
+//                {
+//                    // we're done
+//                    printf("[VU%d] FUCK %d @ PC = 0x%x\n", vu_id, i, PC);
+//                    break;
+//                }
+//            }
+//        }
+
+        // first check to see if there's a conflict
+        if(reg && reg == pipeline[0].write_reg) {
+            // if so
+            branch_condition_hazard = true;
+            result = pipeline[0].old_value;
+            // now we want the OLDEST write in the pipeline:
+            if(pipeline[0].read_and_write)
+            {
+                for(int i = 0; i < pipeline_length; i++)
+                {
+                    if(reg == pipeline[i].write_reg)
+                    {
+                        result = pipeline[i].old_value;
+                        printf("BIG FUCK 2\n");
+                    }
+
+                }
+            }
+        }
+
+
+        return std::make_pair(branch_condition_hazard, result);
+    }
+
 };
 
 class GraphicsInterface;
@@ -93,6 +195,7 @@ class VectorUnit
         VU_GPR backup_oldgpr;
         VU_GPR gpr[32];
         VU_I int_gpr[16];
+        VuIntBranchPipeline int_pipeline;
 
         //Control registers
         static uint32_t FBRST;
@@ -109,6 +212,7 @@ class VectorUnit
 
         uint32_t CLIP_pipeline[4];
         uint64_t MAC_pipeline[4];
+        uint16_t ILW_pipeline[4]; // integer register loads
         uint32_t* CLIP_flags;
         uint64_t* MAC_flags; //pointer to last element in the pipeline; the register accessible to programs
         uint16_t new_MAC_flags; //to be placed in the pipeline
@@ -125,6 +229,7 @@ class VectorUnit
         bool DIV_event_started;
         uint64_t finish_EFU_event;
         bool EFU_event_started;
+        uint32_t cop2_hack = 0;
 
         float update_mac_flags(float value, int index);
         void clear_mac_flags(int index);
@@ -134,6 +239,8 @@ class VectorUnit
         //Updates new_P_Instance
         void start_EFU_unit(int latency);
         void set_int_branch_delay(uint8_t reg);
+        void write_int(uint8_t reg, uint8_t read0 = 0, uint8_t read1 = 0, bool print = false);
+        VU_I read_int_for_branch_delay(uint8_t reg);
         
         void update_status();
         void advance_r();
@@ -157,6 +264,10 @@ class VectorUnit
         void flush_pipes();
 
         void run(int cycles);
+        void run_cop2_hack(){
+            run(4);
+            cop2_hack = 4;
+        }
         void run_jit(int cycles);
         void handle_XGKICK();
         void callmsr();

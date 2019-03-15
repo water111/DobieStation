@@ -942,7 +942,7 @@ void EmotionEngine::qmtc2(int source, int cop_reg)
 void EmotionEngine::cop2_updatevu0()
 {
     if (vu0->is_running())
-        vu0->run(16);
+        vu0->run_cop2_hack();
 }
 
 void EmotionEngine::cop2_special(EmotionEngine &cpu, uint32_t instruction)

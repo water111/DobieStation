@@ -852,6 +852,7 @@ bool VectorInterface::feed_DMA(uint128_t quad)
     return true;
 }
 
+uint32_t mpn = 0;
 void VectorInterface::disasm_micromem()
 {
     //Check for branch targets and also see if the microprogram is the same as the one previously disassembled
@@ -891,41 +892,46 @@ void VectorInterface::disasm_micromem()
 
     ofstream file;
 
-    if (get_id())
-        file.open("microprogram1.txt");
-    else
-        file.open("microprogram0.txt");
+//    if (get_id())
+//        file.open("microprogram1.txt");
+//    else
 
-    if (!file.is_open())
-    {
-        Errors::die("Failed to open\n");
-    }
+    if(get_id() == 0) {
+        std::string filename = "mp0-" + std::to_string(mpn++) + ".txt";
+        file.open(filename);
 
-    for (int i = 0; i < size; i += 8)
-    {
-        if (is_branch_target[i / 8])
+        if (!file.is_open())
         {
-            file << endl;
-            file << "Branch target $" << setfill('0') << setw(4) << right << hex << i << ":";
+            Errors::die("Failed to open\n");
+        }
+
+        for (int i = 0; i < size; i += 8)
+        {
+            if (is_branch_target[i / 8])
+            {
+                file << endl;
+                file << "Branch target $" << setfill('0') << setw(4) << right << hex << i << ":";
+                file << endl;
+            }
+            //PC
+            file << "[$" << setfill('0') << setw(4) << right << hex << i << "] ";
+
+            //Raw instructions
+            uint32_t lower = vu->read_instr<uint32_t>(i);
+            uint32_t upper = vu->read_instr<uint32_t>(i + 4);
+
+            file << setw(8) << hex << upper << ":" << setw(8) << lower << " ";
+            file << setfill(' ') << setw(30) << left << VU_Disasm::upper(i, upper);
+
+            if (upper & (1 << 31))
+                file << VU_Disasm::loi(lower);
+            else
+                file << VU_Disasm::lower(i, lower);
             file << endl;
         }
-        //PC
-        file << "[$" << setfill('0') << setw(4) << right << hex << i << "] ";
-
-        //Raw instructions
-        uint32_t lower = vu->read_instr<uint32_t>(i);
-        uint32_t upper = vu->read_instr<uint32_t>(i + 4);
-
-        file << setw(8) << hex << upper << ":" << setw(8) << lower << " ";
-        file << setfill(' ') << setw(30) << left << VU_Disasm::upper(i, upper);
-
-        if (upper & (1 << 31))
-            file << VU_Disasm::loi(lower);
-        else
-            file << VU_Disasm::lower(i, lower);
-        file << endl;
+        file.close();
     }
-    file.close();
+
 }
 
 #define POLY 0x82f63b78

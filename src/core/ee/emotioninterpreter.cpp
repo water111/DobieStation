@@ -966,6 +966,8 @@ void EmotionInterpreter::cop2_qmtc2(EmotionEngine &cpu, uint32_t instruction)
     int cop_reg = (instruction >> 11) & 0x1F;
     int interlock = (instruction & 0x1);
 
+    //interlock = 1; // fuck this shit
+
     if (interlock)
     {
         if (cpu.check_interlock())
@@ -974,6 +976,10 @@ void EmotionInterpreter::cop2_qmtc2(EmotionEngine &cpu, uint32_t instruction)
             return;
         }
         cpu.clear_interlock();
+    }
+    else
+    {
+        printf("NON INTERLOCKING QMTC2!\n");
     }
 
     cpu.qmtc2(source, cop_reg);

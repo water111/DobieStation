@@ -11,6 +11,10 @@ void EmotionInterpreter::cop2_special(EmotionEngine &cpu, VectorUnit &vu0, uint3
     vu0.flush_pipes();
     uint8_t op = instruction & 0x3F;
 
+
+    if(op != 0x38 && vu0.is_running()) {
+        printf("doing a cop2 speical (op 0x%x when VU0 is running!\n", op);
+    }
     switch (op)
     {
         case 0x00:
@@ -438,8 +442,36 @@ void EmotionInterpreter::cop2_vior(VectorUnit &vu0, uint32_t instruction)
 
 void EmotionInterpreter::cop2_vcallms(VectorUnit &vu0, uint32_t instruction, EmotionEngine &cpu)
 {
+
     uint32_t imm = (instruction >> 6) & 0x7FFF;
     imm *= 8;
+
+//    if(cpu.get_PC() == 0x6ebc88)
+//    {
+//        return;
+//    }
+//
+//
+//    if(cpu.get_PC() == 0x6ed81c || cpu.get_PC() == 0x6ed91c)
+//    {
+//        for(int i = 0; i< 32; i++){
+//            for(int j = 0; j < 4; j++) {
+//                vu0.set_gpr_f(i,j,0.0);
+//            }
+//        }
+//        return;
+//    }
+
+//    uint32_t eepc = 0x6ebc88;
+//    uint32_t pc = cpu.get_PC();
+//    bool in_range = (pc >= eepc - 0x2000) && (pc <= eepc + 0x2000);
+//    if(in_range && (imm == 432 || imm == 0)){// || imm == 3504 || imm == 3632 || imm == 2240 || imm == 2424 || imm == 2488) {
+//        printf("SKIP VCALLMS: %d (0x%x)\n", imm, imm);
+//        printf("EE PC 0x%x\n", cpu.get_PC());
+//
+//        return; // fuck off vu0
+//    }
+
 
     if (cpu.vu0_wait())
     {
@@ -466,6 +498,10 @@ void EmotionInterpreter::cop2_vcallmsr(VectorUnit &vu0, uint32_t instruction, Em
 void EmotionInterpreter::cop2_special2(VectorUnit &vu0, uint32_t instruction)
 {
     uint16_t op = (instruction & 0x3) | ((instruction >> 4) & 0x7C);
+
+    if(op != 0x2F && vu0.is_running()) {
+        printf("22doing a cop2 speical (op 0x%x when VU0 is running!\n", op);
+    }
     switch (op)
     {
         case 0x00:

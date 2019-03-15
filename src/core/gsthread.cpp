@@ -1723,6 +1723,20 @@ void GraphicsSynthesizerThread::render_triangle()
     Vertex v2 = vtx_queue[1]; v2.to_relative(current_ctx->xyoffset);
     Vertex v3 = vtx_queue[0]; v3.to_relative(current_ctx->xyoffset);
 
+    int64_t area = abs((int64_t)v1.x * ((int64_t)v2.y - (int64_t)v3.y) + (int64_t)v2.x * ((int64_t)v3.y - (int64_t)v1.y) + (int64_t)v3.x * ((int64_t)v1.y - (int64_t)v2.y));
+    int64_t max_diffx = abs(v1.x - v2.x);
+    max_diffx = std::max(max_diffx, (int64_t)abs(v2.x - v3.x));
+
+    int64_t max_diffy = abs(v1.x - v2.x);
+    max_diffy = std::max(max_diffy, (int64_t)abs(v2.x - v3.x));
+
+//    bool skip = false;
+//    if(max_diffx > 2000) skip = true;
+//    if(max_diffy > 2000)  skip = true;
+//    if(area > 800*800)  skip = true;;
+//    if(skip) return;
+
+
     //The triangle rasterization code uses an approach with barycentric coordinates
     //Clear explanation can be read below:
     //https://fgiesen.wordpress.com/2013/02/06/the-barycentric-conspirac/

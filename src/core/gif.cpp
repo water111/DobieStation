@@ -7,6 +7,8 @@ GraphicsInterface::GraphicsInterface(GraphicsSynthesizer *gs) : gs(gs)
 
 }
 
+
+
 void GraphicsInterface::reset()
 {
     path[0].current_tag.data_left = 0;
@@ -201,19 +203,27 @@ void GraphicsInterface::feed_GIF(uint128_t data)
         internal_Q = 1.0f;
 
         //Ignore zeroed out packets
-        /*if (data1)
+        if (data1)
         {
             printf("[GIF] PATH%d New primitive!\n", active_path);
             printf("NLOOP: $%04X\n", path[active_path].current_tag.NLOOP);
             printf("EOP: %d\n", path[active_path].current_tag.end_of_packet);
-            printf("Output PRIM: %d PRIM: $%04X\n", path[active_path].current_tag.output_PRIM, path[active_path].current_tag.PRIM);
+            printf("Output PRIM: %d PRIM: $%04X\n", path[active_path].current_tag.output_PRIM,
+                   path[active_path].current_tag.PRIM);
             printf("Format: %d\n", path[active_path].current_tag.format);
             printf("Reg count: %d\n", path[active_path].current_tag.reg_count);
-            printf("Regs: $%08X_$%08X\n", path[active_path].current_tag.regs >> 32, path[active_path].current_tag.regs & 0xFFFFFFFF);
-        }*/
+            printf("Regs: $%08X_$%08X\n", path[active_path].current_tag.regs >> 32,
+                   path[active_path].current_tag.regs & 0xFFFFFFFF);
+        }
 
-        if (path[active_path].current_tag.output_PRIM && path[active_path].current_tag.format != 1)
-            gs->write64(0, path[active_path].current_tag.PRIM);
+
+
+//        if((path[active_path].current_tag.PRIM & 0b111) != 0b100)
+//        {
+            if (path[active_path].current_tag.output_PRIM && path[active_path].current_tag.format != 1)
+                gs->write64(0, path[active_path].current_tag.PRIM);
+//        }
+
     }
     else
     {
