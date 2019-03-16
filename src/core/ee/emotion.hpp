@@ -36,6 +36,8 @@ class EmotionEngine
         uint32_t PC, new_PC;
         uint64_t SA;
 
+
+
         bool wait_for_IRQ;
         bool branch_on;
         bool can_disassemble;
@@ -45,11 +47,13 @@ class EmotionEngine
 
         Deci2Handler deci2handlers[128];
         int deci2size;
-
+        void jak_hack();
         uint32_t get_paddr(uint32_t vaddr);
         void handle_exception(uint32_t new_addr, uint8_t code);
         void deci2call(uint32_t func, uint32_t param);
     public:
+    uint32_t lastPCWhenJump = 0;
+    uint32_t lastJumpTarget = 0;
         EmotionEngine(Cop0* cp0, Cop1* fpu, Emulator* e, uint8_t* sp, VectorUnit* vu0, VectorUnit* vu1, EEBreakpointList* ee_breakpoints);
         static const char* REG(int id);
         static const char* COP0_REG(int id);
@@ -60,6 +64,9 @@ class EmotionEngine
         void unhalt();
         void print_state();
         void set_disassembly(bool dis);
+        void print_last_jump(){
+            fprintf(stderr, "last jump 0x%x -> 0x%x\n", lastPCWhenJump, lastJumpTarget);
+        }
 
         Cop0* get_cop0();
         Cop1* get_fpu();

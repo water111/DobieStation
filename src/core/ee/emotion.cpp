@@ -127,6 +127,18 @@ void EmotionEngine::reset()
         deci2handlers[i].active = false;
 }
 
+void EmotionEngine::jak_hack()
+{
+    //00136C8C MasterDebug:    .word 1                  # DATA XREF: main:loc_100290w
+    //.sdata:00136C8C                                          # KernelCheckAndDispatch(void)+84r ...
+    //.sdata:00136C90                 .globl DebugSegment
+    //.sdata:00136C90 DebugSegment:
+    write32(0x00136C8C, 1);
+    write32(0x00136C90, 1);
+    //write32(0x87A688, 0); // kill debug hook
+    write32(0x10B654, 0); // some weird deci2 thing
+}
+
 int EmotionEngine::run(int cycles_to_run)
 {
     int cycles = cycles_to_run;
@@ -134,6 +146,7 @@ int EmotionEngine::run(int cycles_to_run)
     {
         while (cycles_to_run)
         {
+            jak_hack();
             /*if (PC == 0x1001E0)
                 PC = 0x100204;
             if (PC == 0x10021C)
@@ -156,9 +169,12 @@ int EmotionEngine::run(int cycles_to_run)
                     branch_on = false;
                     if (!new_PC || (new_PC & 0x3))
                     {
+                        fprintf(stderr, "last jump 0x%x -> 0x%x\n", lastPCWhenJump, lastJumpTarget);
                         Errors::die("[EE] Jump to invalid address $%08X from $%08X\n", new_PC, PC - 8);
                     }
                     //if (new_PC != 0x15C440 && new_PC != 0x109710)
+                    lastPCWhenJump = PC;
+                    lastJumpTarget = new_PC;
                     PC = new_PC;
                 }
                 else
@@ -746,7 +762,10 @@ void EmotionEngine::deci2call(uint32_t func, uint32_t param)
                 int len = read32(addr) - 0x0C;
                 uint32_t str = addr + 0x0C;
                 printf("Len: %d\n", len);
-                e->ee_deci2send(str, len);
+                if(len < 0x10000)
+                    e->ee_deci2send(str, len);
+                else
+                    printf("deci2send skipping because 0x%x is too big\n", len);
             }
             set_gpr<uint64_t>(2, 1);
         }

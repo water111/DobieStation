@@ -61,7 +61,7 @@ uint128_t DMAC::fetch128(uint32_t addr)
     }
     else
     {
-        addr &= 0x01FFFFF0;
+        addr &= 0x07FFFFF0;
         return *(uint128_t*)&RDRAM[addr];
     }
 }
@@ -75,7 +75,7 @@ void DMAC::store128(uint32_t addr, uint128_t data)
     }
     else
     {
-        addr &= 0x01FFFFF0;
+        addr &= 0x07FFFFF0;
         *(uint128_t*)&RDRAM[addr] = data;
     }
 }

@@ -109,6 +109,7 @@ private:
     void add_breakpoint(DebuggerBreakpoint* breakpoint);
     void remove_breakpoint(uint64_t id);
     void resume_emulator();
+    std::string get_jak1_symbol(uint32_t instr);
     BreakpointList* get_current_cpu_breakpoints();
     uint32_t& get_current_cpu_memory_location();
     uint32_t& get_current_cpu_disassembly_location();

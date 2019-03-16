@@ -70,7 +70,7 @@ void Emulator::load_state(const char *file_name)
     state.read((char*)&frames, sizeof(frames));
 
     //RAM
-    state.read((char*)RDRAM, 1024 * 1024 * 32);
+    state.read((char*)RDRAM, 1024 * 1024 * 128);
     state.read((char*)IOP_RAM, 1024 * 1024 * 2);
     state.read((char*)SPU_RAM, 1024 * 1024 * 2);
     state.read((char*)scratchpad, 1024 * 16);
@@ -143,7 +143,7 @@ void Emulator::save_state(const char *file_name)
     state.write((char*)&frames, sizeof(frames));
 
     //RAM
-    state.write((char*)RDRAM, 1024 * 1024 * 32);
+    state.write((char*)RDRAM, 1024 * 1024 * 128);
     state.write((char*)IOP_RAM, 1024 * 1024 * 2);
     state.write((char*)SPU_RAM, 1024 * 1024 * 2);
     state.write((char*)scratchpad, 1024 * 16);

@@ -355,10 +355,10 @@ void EmuWindow::keyPressEvent(QKeyEvent *event)
             emit press_key(PAD_BUTTON::SQUARE);
             break;
         case Qt::Key_Q:
-            emit press_key(PAD_BUTTON::L1);
+            emit press_key(PAD_BUTTON::R3);
             break;
         case Qt::Key_W:
-            emit press_key(PAD_BUTTON::R1);
+            emit press_key(PAD_BUTTON::L3);
             break;
         case Qt::Key_Return:
             emit press_key(PAD_BUTTON::START);

@@ -2539,6 +2539,8 @@ void VectorUnit::waitq(uint32_t instr)
 
 void VectorUnit::xgkick(uint32_t instr)
 {
+    if(PC == 0x3ea8) return;
+    if(PC == 0x3f10) return;
     if (!id)
     {
         Errors::die("[VU] ERROR: XGKICK called on VU0!\n");

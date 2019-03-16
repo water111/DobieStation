@@ -669,6 +669,11 @@ void EEDebugWindow::instruction_context_menu(const QPoint &pos)
 
     });
 
+    menu.addAction(tr("Jak 1 Symbol Name"), this, [&]{
+        uint32_t instr = ee->read32(addr);
+        printf("%s\n", get_jak1_symbol(instr).c_str());
+    });
+
 
     if(!bps.empty())
     {
@@ -793,6 +798,32 @@ void EEDebugWindow::on_memory_up_clicked()
     update_memory();
 }
 
+std::string EEDebugWindow::get_jak1_symbol(uint32_t instr)
+{
+    try
+    {
+        int16_t offset = *(int16_t*)(&instr);
+        //printf("offset %d\n", offset);
+        uint32_t s7 = ee->get_gpr<uint32_t>(23);
+        uint32_t symbol = s7 + offset + 0xff38;
+        //printf("symbol 0x%x\n", symbol);
+        uint32_t gstring = ee->read32(symbol);
+        //printf("gstring 0x%x\n", gstring);
+        char gstring_buffer[128];
+        for(uint32_t i = 0; i < 128; i++)
+        {
+            gstring_buffer[i] = ee->read8(gstring + i + 4);
+            //printf("c[%02d] = %c\n", i, gstring_buffer[i]);
+        }
+        return std::string(gstring_buffer);
+    }
+    catch (std::exception& e)
+    {
+        return "error when reading symbol!";
+    }
+
+}
+
 void EEDebugWindow::on_memory_down_clicked()
 {
     get_current_cpu_memory_location() += 2048;
@@ -813,8 +844,9 @@ void EEDebugWindow::on_break_continue_button_clicked()
     printf("break handler...\n");
     if(emulation_running())
     {
-        waiting_for_pause = true;
-        emu_thread->pause(DEBUGGER);
+        //waiting_for_pause = true;
+        //emu_thread->pause(DEBUGGER);
+        add_breakpoint(new EmotionBreakpoints::Step());
     }
 
         //add_breakpoint(new EmotionBreakpoints::Step());

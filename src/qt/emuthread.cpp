@@ -9,7 +9,7 @@ using namespace std;
 EmuThread::EmuThread()
 {
     abort = false;
-    pause_status = 0x0;
+    pause_status = 1 << DEBUGGER;
     gsdump_reading = false;
     frame_advance = false;
 }

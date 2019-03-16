@@ -148,6 +148,8 @@ void EmotionInterpreter::special(EmotionEngine &cpu, uint32_t instruction)
             dsra32(cpu, instruction);
             break;
         default:
+            printf("bad instruction @ 0x%x\n", cpu.get_PC());
+            cpu.print_last_jump();
             unknown_op("special", instruction, op);
     }
 }
@@ -214,6 +216,9 @@ void EmotionInterpreter::srav(EmotionEngine &cpu, uint32_t instruction)
 void EmotionInterpreter::jr(EmotionEngine &cpu, uint32_t instruction)
 {
     uint32_t address = (instruction >> 21) & 0x1F;
+    if(address == 0){
+        printf("jr 0: last jump from 0x%x to 0x%x\n", cpu.lastPCWhenJump, cpu.lastJumpTarget);
+    }
     cpu.jp(cpu.get_gpr<uint32_t>(address));
 }
 
@@ -222,6 +227,10 @@ void EmotionInterpreter::jalr(EmotionEngine &cpu, uint32_t instruction)
     uint32_t new_addr = (instruction >> 21) & 0x1F;
     uint32_t return_reg = (instruction >> 11) & 0x1F;
     uint32_t return_addr = cpu.get_PC() + 8;
+    if(cpu.get_gpr<uint32_t>(new_addr) == 0x65b4afc) return;
+    if(cpu.get_gpr<uint32_t>(new_addr) == 0x65b5a44) return;
+
+    //printf("JALR -> 0x%x @ PC = 0x%x\n", cpu.get_gpr<uint32_t>(new_addr), cpu.get_PC());
     cpu.jp(cpu.get_gpr<uint32_t>(new_addr));
     cpu.set_gpr<uint64_t>(return_reg, return_addr);
 }

@@ -91,8 +91,8 @@ void Emulator::run()
         vif1.update(cycles);
         gif.run(cycles);
         vu0.run(cycles);
-        //vu1.run(cycles);
-        vu1.run_jit(cycles);
+        vu1.run(cycles);
+        //vu1.run_jit(cycles);
         cycles >>= 2;
         iop_timers.run(cycles);
         iop_dma.run(cycles);
@@ -135,7 +135,7 @@ void Emulator::reset()
     frames = 0;
     skip_BIOS_hack = NONE;
     if (!RDRAM)
-        RDRAM = new uint8_t[1024 * 1024 * 32];
+        RDRAM = new uint8_t[1024 * 1024 * 128];
     if (!IOP_RAM)
         IOP_RAM = new uint8_t[1024 * 1024 * 2];
     if (!BIOS)
@@ -388,7 +388,7 @@ bool Emulator::interlock_cop2_check(bool isCOP2)
 uint8_t Emulator::read8(uint32_t address)
 {
     if (address < 0x10000000)
-        return RDRAM[address & 0x01FFFFFF];
+        return RDRAM[address & 0x07FFFFFF];
     if (address >= 0x1FC00000 && address < 0x20000000)
         return BIOS[address & 0x3FFFFF];
     if (address >= 0x1C000000 && address < 0x1C200000)
@@ -411,7 +411,7 @@ uint8_t Emulator::read8(uint32_t address)
 uint16_t Emulator::read16(uint32_t address)
 {
     if (address < 0x10000000)
-        return *(uint16_t*)&RDRAM[address & 0x01FFFFFF];
+        return *(uint16_t*)&RDRAM[address & 0x07FFFFFF];
     if (address >= 0x10000000 && address < 0x10002000)
         return (uint16_t)timers.read32(address);
     if (address >= 0x1FC00000 && address < 0x20000000)
@@ -430,7 +430,7 @@ uint16_t Emulator::read16(uint32_t address)
 uint32_t Emulator::read32(uint32_t address)
 {
     if (address < 0x10000000)
-        return *(uint32_t*)&RDRAM[address & 0x01FFFFFF];
+        return *(uint32_t*)&RDRAM[address & 0x07FFFFFF];
     if (address >= 0x1FC00000 && address < 0x20000000)
         return *(uint32_t*)&BIOS[address & 0x3FFFFF];
     if (address >= 0x10000000 && address < 0x10002000)
@@ -541,7 +541,7 @@ uint32_t Emulator::read32(uint32_t address)
 uint64_t Emulator::read64(uint32_t address)
 {
     if (address < 0x10000000)
-        return *(uint64_t*)&RDRAM[address & 0x01FFFFFF];
+        return *(uint64_t*)&RDRAM[address & 0x07FFFFFF];
     if (address >= 0x10000000 && address < 0x10002000)
         return timers.read32(address);
     if (address >= 0x1FC00000 && address < 0x20000000)
@@ -570,7 +570,7 @@ uint64_t Emulator::read64(uint32_t address)
 uint128_t Emulator::read128(uint32_t address)
 {
     if (address < 0x10000000)
-        return *(uint128_t*)&RDRAM[address & 0x01FFFFFF];
+        return *(uint128_t*)&RDRAM[address & 0x07FFFFFF];
     if (address >= 0x1FC00000 && address < 0x20000000)
         return *(uint128_t*)&BIOS[address & 0x3FFFFF];
     printf("Unrecognized read128 at physical addr $%08X\n", address);
@@ -581,7 +581,7 @@ void Emulator::write8(uint32_t address, uint8_t value)
 {
     if (address < 0x10000000)
     {
-        RDRAM[address & 0x01FFFFFF] = value;
+        RDRAM[address & 0x07FFFFFF] = value;
         return;
     }
     if (address >= 0x10008000 && address < 0x1000F000)
@@ -613,7 +613,7 @@ void Emulator::write16(uint32_t address, uint16_t value)
 {
     if (address < 0x10000000)
     {
-        *(uint16_t*)&RDRAM[address & 0x01FFFFFF] = value;
+        *(uint16_t*)&RDRAM[address & 0x07FFFFFF] = value;
         return;
     }
     if (address >= 0x10008000 && address < 0x1000F000)
@@ -643,7 +643,7 @@ void Emulator::write32(uint32_t address, uint32_t value)
 {
     if (address < 0x10000000)
     {
-        *(uint32_t*)&RDRAM[address & 0x01FFFFFF] = value;
+        *(uint32_t*)&RDRAM[address & 0x07FFFFFF] = value;
         return;
     }
     if (address >= 0x1C000000 && address < 0x1C200000)
@@ -743,7 +743,7 @@ void Emulator::write64(uint32_t address, uint64_t value)
 {
     if (address < 0x10000000)
     {
-        *(uint64_t*)&RDRAM[address & 0x01FFFFFF] = value;
+        *(uint64_t*)&RDRAM[address & 0x07FFFFFF] = value;
         return;
     }
     if (address >= 0x1C000000 && address < 0x1C200000)
@@ -798,7 +798,7 @@ void Emulator::write128(uint32_t address, uint128_t value)
 {
     if (address < 0x10000000)
     {
-        *(uint128_t*)&RDRAM[address & 0x01FFFFFF] = value;
+        *(uint128_t*)&RDRAM[address & 0x07FFFFFF] = value;
         return;
     }
     if (address >= 0x11000000 && address < 0x11010000)
@@ -854,7 +854,7 @@ void Emulator::ee_kputs(uint32_t param)
     char c;
     do
     {
-        c = RDRAM[param & 0x1FFFFFF];
+        c = RDRAM[param & 0x7FFFFFF];
         ee_log << c;
         param++;
     } while (c);
@@ -865,7 +865,7 @@ void Emulator::ee_deci2send(uint32_t addr, int len)
 {
     while (len > 0)
     {
-        char c = RDRAM[addr & 0x1FFFFFF];
+        char c = RDRAM[addr & 0x7FFFFFF];
         ee_log << c;
         addr++;
         len--;

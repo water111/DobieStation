@@ -182,7 +182,8 @@ void VectorInterface::update(int cycles)
                         handle_UNPACK(value);
                     else
                     {
-                        Errors::die("[VIF] Unhandled data for command $%02X\n", command);
+                        Errors::print_warning("[VIF] Unhandled data for command $%02X\n", command);
+                        command = 0;
                     }
             }
         }
@@ -338,7 +339,7 @@ void VectorInterface::decode_cmd(uint32_t value)
                 init_UNPACK(value);
             else
             {
-                Errors::die("[VIF] Unrecognized command $%02X\n", command);
+                Errors::print_warning("[VIF] Unrecognized command $%02X\n", command);
             }
     }
 }
