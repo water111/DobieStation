@@ -38,6 +38,7 @@ extern "C" void run_ee_jit(EE_JIT64& jit, EmotionEngine& ee);
 
 EE_JIT64::EE_JIT64() : emitter(&cache)
 {
+  cache.setup_ee_lookup();
 }
 
 void EE_JIT64::reset(bool clear_cache)
@@ -68,25 +69,27 @@ void EE_JIT64::reset(bool clear_cache)
     int_regs[REG_64::RAX].locked = true;
 
     if (clear_cache)
-        cache.flush_all_blocks();
+        cache.flush_all_blocks_ee();
+        //cache.flush_all_blocks();
 }
 
 extern "C"
 uint8_t* exec_block_ee(EE_JIT64& jit, EmotionEngine& ee)
 {
     bool is_modified = false;
-    JitBlock *recompiledBlock = jit.cache.find_block(BlockState{ ee.PC, 0, 0, 0, 0 });
-
-    if (ee.cp0->get_tlb_modified(ee.PC / 4096))
-    {
-        jit.cache.invalidate_ee_page(ee.PC / 4096);
-        // TODO: Cleaner way of clearing entire page of blocks
-        //for (int i = 0; i < 4096; i += 4)
-        //{
-        //    jit.cache.free_block(BlockState{ ee.PC / 4096 * 4096 + i, 0, 0, 0, 0 });
-        //}
+    //JitBlock *recompiledBlock = jit.cache.find_block(BlockState{ ee.PC, 0, 0, 0, 0 });
+    JitBlock *recompiledBlock = jit.cache.find_block_ee(BlockState{ ee.PC, 0, 0, 0, 0 });
+    uint32_t page = ee.PC / 4096;
+//    if (ee.cp0->get_tlb_modified(ee.PC / 4096))
+//    {
+//        jit.cache.invalidate_ee_page(ee.PC / 4096);
+//        is_modified = true;
+//        ee.cp0->clear_tlb_modified(ee.PC / 4096);
+//    }
+    if(ee.cp0->get_tlb_modified(page)) {
+        jit.cache.invalidate_ee_page_ee(page);
         is_modified = true;
-        ee.cp0->clear_tlb_modified(ee.PC / 4096);
+        ee.cp0->clear_tlb_modified(page);
     }
 
     //printf("[EE_JIT64] Executing block at $%08X\n", ee.PC);
@@ -128,6 +131,7 @@ void EE_JIT64::recompile_block(EmotionEngine& ee, IR::Block& block)
     saved_int_regs = std::vector<REG_64>();
     saved_xmm_regs = std::vector<REG_64>();
 
+    //cache.alloc_block(BlockState{ ee.get_PC(), 0, 0, 0, 0 });
     cache.alloc_block(BlockState{ ee.get_PC(), 0, 0, 0, 0 });
 
     //Return the amount of cycles to update the EE with
@@ -160,7 +164,8 @@ void EE_JIT64::recompile_block(EmotionEngine& ee, IR::Block& block)
         cleanup_recompiler(ee, true);
 
     //Switch the block's privileges from RW to RX.
-    cache.set_current_block_rx();
+    //cache.set_current_block_rx();
+    cache.set_current_block_rx_ee();
     //cache.print_current_block();
     //cache.print_literal_pool();
 }

@@ -63,6 +63,8 @@ JitCache::JitCache(std::size_t size)
 
   // block that was allocated/found most recently
   current_block = nullptr;
+  ee_page_lookup_cache = nullptr;
+  ee_page_lookup_idx = -1;
 }
 
 
@@ -309,6 +311,164 @@ void JitCache::debug_print_page_list(uint32_t ee_page)
   }
 }
 
+
+/////////////////
+// EE Lookup   //
+/////////////////
+#include <cassert>
+#include <cstdio>
+// setup_ee_lookup
+// alloc_block_ee (don't need this)
+// flush_all_blocks_ee
+// invalidate_ee_page
+// find_block_ee
+//
+
+EEPageRecord* JitCache::lookup_ee_page(uint32_t page)
+{
+  page_lookups++;
+  // page cache
+  if(ee_page_lookup_idx == page) {
+    cached_page_lookups++;
+    return ee_page_lookup_cache;
+  }
+
+  // map
+  EEPageRecord* rec = &ee_page_record_map[page];
+
+  // store in cache
+  ee_page_lookup_cache = rec;
+  ee_page_lookup_idx = page;
+
+  return rec;
+}
+
+
+/*!
+ * One time initialization of EE lookup stuff
+ */
+void JitCache::setup_ee_lookup()
+{
+
+}
+
+/*!
+ * Finalize a block and mark it as executable.
+ * This copies the block to the JIT heap
+ * Puts block in EE lookup structure
+ */
+void JitCache::set_current_block_rx_ee()
+{
+  if(current_block != &building_jit_block) Errors::die("Tried to set rx a block that is not in progress");
+  std::size_t block_size = (uint8_t*)current_block->code_end - (uint8_t*)current_block->literals_start;
+  if(block_size <= 0) Errors::die("block size invalid");
+
+  // allocate space on JIT heap
+  void* dest = jit_malloc(block_size);
+
+  if(!dest) {
+    fprintf(stderr, "Flushing JIT cache\n");
+    flush_all_blocks_ee();
+    current_block = &building_jit_block;
+    dest = jit_malloc(block_size);
+  }
+  if(!dest) {
+    Errors::die("JIT heap out of memory even after freeing all, something is wrong with the jit allocator");
+  }
+
+  // copy to heap
+  std::memcpy(dest, current_block->literals_start, block_size);
+
+  // update record to point to jit heap
+  std::size_t literal_size = (uint8_t*)building_jit_block.code_start - (uint8_t*)building_jit_block.literals_start;
+  std::size_t code_size = (uint8_t*)building_jit_block.code_end - (uint8_t*)building_jit_block.code_start;
+  building_jit_block.literals_start = dest;
+  building_jit_block.code_start = (uint8_t*)building_jit_block.literals_start + literal_size;
+  building_jit_block.code_end = (uint8_t*)building_jit_block.code_start + code_size;
+
+  // check if page has code
+  uint32_t pc = building_jit_block.state.pc;
+  uint32_t page = pc / 4096;
+
+  EEPageRecord* record = lookup_ee_page(page);
+
+  if(!record->block_array) {
+    // no code in this ee block, allocate
+    record->block_array = new JitBlock[1024];
+    record->valid = true;
+    memset(record->block_array, 0, 1024 * sizeof(JitBlock));
+  }
+
+  // update ee block
+  uint64_t idx = (pc - 4096*page)/4;
+  assert(idx < 1024);
+  record->block_array[idx] = building_jit_block;
+}
+
+/*!
+ * Completely flush JIT cache and EE structures
+ */
+void JitCache::flush_all_blocks_ee()
+{
+  for(auto& page : ee_page_record_map) { // all code-containing pages
+    for(uint32_t idx = 0; idx < 1024; idx++) { // all possible PCs
+      if(page.second.block_array[idx].literals_start) { // if they are a start of a block
+        jit_free(page.second.block_array[idx].literals_start); // free JIT heap memory
+      }
+    }
+    delete[] page.second.block_array; // free record memory for EE page
+  }
+  ee_page_record_map.clear();
+  ee_page_lookup_cache = nullptr;
+  ee_page_lookup_idx = -1;
+}
+
+void JitCache::invalidate_ee_page_ee(uint32_t page)
+{
+  auto kv = ee_page_record_map.find(page);
+  if(kv != ee_page_record_map.end()) {
+    if(kv->second.block_array) {
+      for(uint32_t idx = 0; idx < 1024; idx++) {
+        if(kv->second.block_array[idx].literals_start) {
+          jit_free(kv->second.block_array[idx].literals_start);
+        }
+      }
+    }
+    delete[] kv->second.block_array;
+    ee_page_record_map.erase(page);
+  }
+
+  if(page == ee_page_lookup_idx) {
+    ee_page_lookup_cache = nullptr;
+    ee_page_lookup_idx = -1;
+  }
+
+  fprintf(stderr, "cache %ld/%ld %.3f\n", cached_page_lookups, page_lookups, (double)cached_page_lookups/page_lookups);
+}
+
+JitBlock* JitCache::find_block_ee(BlockState state)
+{
+  uint32_t pc = state.pc;
+  uint32_t page = pc / 4096;
+  uint64_t idx = (pc - 4096*page)/4;
+  assert(idx < 1024);
+  EEPageRecord* page_rec = lookup_ee_page(page);
+  if(page_rec->block_array && page_rec->block_array[idx].literals_start) {
+    current_block = &page_rec->block_array[idx];
+  } else {
+    current_block = nullptr;
+  }
+  return current_block;
+}
+
+bool JitCache::is_page_valid_ee(uint32_t page)
+{
+  EEPageRecord* page_rec = lookup_ee_page(page);
+  return page_rec->valid;
+}
+
+
+
 /////////////////
 // ALLOCATOR   //
 /////////////////
@@ -335,7 +495,7 @@ void JitCache::debug_print_page_list(uint32_t ee_page)
 // ^      ^           ^               ^      ^
 // -8     0         sizeof(FreeList)  size   size + 8
 
-#include <cassert>
+
 
 // minimum alignment of JIT block.
 constexpr static int JIT_ALLOC_ALIGN = 16;

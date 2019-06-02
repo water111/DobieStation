@@ -66,6 +66,11 @@ struct FreeList {
   uint8_t bin;
 };
 
+struct EEPageRecord {
+  JitBlock* block_array = nullptr; // nullptr if there is no cached code in this block.
+  bool valid = false;  // only meaningful if block_array is non-null.
+};
+
 
 class JitCache
 {
@@ -95,6 +100,8 @@ class JitCache
         JitBlock** get_ee_page_list_head(uint32_t ee_page);
         void debug_print_page_list(uint32_t ee_page);
 
+        EEPageRecord* lookup_ee_page(uint32_t page);
+
         std::unordered_map<BlockState, JitBlock, BlockStateHash> blocks;
 
         std::unordered_map<uint32_t, JitBlock*> ee_page_lists;
@@ -109,6 +116,15 @@ class JitCache
         FreeList* free_bin_lists[JIT_ALLOC_BINS + 1];
 
         uint64_t heap_usage;
+
+        // ee lookup
+        EEPageRecord* ee_page_lookup_cache;
+        int32_t ee_page_lookup_idx;
+        std::unordered_map<uint32_t, EEPageRecord> ee_page_record_map;
+
+        uint64_t page_lookups = 0;
+        uint64_t cached_page_lookups = 0;
+
     public:
         explicit JitCache(std::size_t size = 0);
         ~JitCache();
@@ -123,6 +139,14 @@ class JitCache
         uint8_t* get_current_block_start();
         uint8_t* get_current_block_pos();
         void set_current_block_pos(uint8_t* pos);
+
+        // ee specific
+        void setup_ee_lookup();
+        void set_current_block_rx_ee();
+        void flush_all_blocks_ee();
+        void invalidate_ee_page_ee(uint32_t page);
+        JitBlock* find_block_ee(BlockState state);
+        bool is_page_valid_ee(uint32_t page);
 
         void set_current_block_rx();
         void print_current_block();

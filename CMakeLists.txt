@@ -7,7 +7,7 @@ set(CMAKE_CXX_STANDARD 11)
 
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
-set(CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} "-pthread -O2 -ggdb")
+set(CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} "-pthread -O2 -ggdb -msse3")
 
 find_package(Qt5Core REQUIRED)
 find_package(Qt5Widgets REQUIRED)
