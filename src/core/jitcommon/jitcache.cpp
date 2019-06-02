@@ -443,7 +443,7 @@ void JitCache::invalidate_ee_page_ee(uint32_t page)
     ee_page_lookup_idx = -1;
   }
 
-  fprintf(stderr, "cache %ld/%ld %.3f\n", cached_page_lookups, page_lookups, (double)cached_page_lookups/page_lookups);
+  //fprintf(stderr, "cache %ld/%ld %.3f\n", cached_page_lookups, page_lookups, (double)cached_page_lookups/page_lookups);
 }
 
 JitBlock* JitCache::find_block_ee(BlockState state)
