@@ -9,6 +9,7 @@
 
 #include "../core/emulator.hpp"
 #include "../core/errors.hpp"
+#include "FairMutex.h"
 
 #define GSDUMP_BUFFERED_MESSAGES 100000
 
@@ -27,7 +28,7 @@ class EmuThread : public QThread
     private:
         bool abort;
         uint32_t pause_status;
-        QMutex emu_mutex;
+        FairMutex emu_mutex;
         Emulator e;
 
         std::chrono::system_clock::time_point old_frametime;

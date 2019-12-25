@@ -3,6 +3,7 @@
 #include <fstream>
 
 #include "emuthread.hpp"
+#include "FairMutex.h"
 
 using namespace std;
 
@@ -29,45 +30,45 @@ void EmuThread::reset()
 
 void EmuThread::set_skip_BIOS_hack(SKIP_HACK skip)
 {
-    QMutexLocker locker(&emu_mutex);
+    FairMutexLock locker(emu_mutex);
     e.set_skip_BIOS_hack(skip);
 }
 
 void EmuThread::set_ee_mode(CPU_MODE mode)
 {
-    QMutexLocker locker(&emu_mutex);
+    FairMutexLock locker(emu_mutex);
     e.set_ee_mode(mode);
 }
 
 void EmuThread::set_vu1_mode(CPU_MODE mode)
 {
-    QMutexLocker locker(&emu_mutex);
+    FairMutexLock locker(emu_mutex);
     e.set_vu1_mode(mode);
 }
 
 void EmuThread::load_BIOS(const uint8_t *BIOS)
 {
-    QMutexLocker locker(&emu_mutex);
+    FairMutexLock locker(emu_mutex);
     e.load_BIOS(BIOS);
 }
 
 void EmuThread::load_ELF(const uint8_t *ELF, uint64_t ELF_size)
 {
-    QMutexLocker locker(&emu_mutex);
+    FairMutexLock locker(emu_mutex);
     e.reset();
     e.load_ELF(ELF, ELF_size);
 }
 
 void EmuThread::load_CDVD(const char* name, CDVD_CONTAINER type)
 {
-    QMutexLocker locker(&emu_mutex);
+    FairMutexLock locker(emu_mutex);
     e.reset();
     e.load_CDVD(name, type);
 }
 
 bool EmuThread::load_state(const char *name)
 {
-    QMutexLocker locker(&emu_mutex);
+    FairMutexLock locker(emu_mutex);
     bool fail = false;
     if (!e.request_load_state(name))
         fail = true;
@@ -77,7 +78,7 @@ bool EmuThread::load_state(const char *name)
 
 bool EmuThread::save_state(const char *name)
 {
-    QMutexLocker locker(&emu_mutex);
+    FairMutexLock locker(emu_mutex);
     bool fail = false;
     if (!e.request_save_state(name))
         fail = true;
@@ -87,7 +88,7 @@ bool EmuThread::save_state(const char *name)
 
 bool EmuThread::gsdump_read(const char *name)
 {
-    QMutexLocker locker(&emu_mutex);
+    FairMutexLock locker(emu_mutex);
     gsdump.open(name,ios::binary);
     if (!gsdump.is_open())
         return 1;
@@ -101,13 +102,13 @@ bool EmuThread::gsdump_read(const char *name)
 
 void EmuThread::gsdump_write_toggle()
 {
-    QMutexLocker locker(&emu_mutex);
+    FairMutexLock locker(emu_mutex);
     e.request_gsdump_toggle();
 }
 
 void EmuThread::gsdump_single_frame()
 {
-    QMutexLocker locker(&emu_mutex);
+    FairMutexLock locker(emu_mutex);
     e.request_gsdump_single_frame();
 }
 
@@ -201,7 +202,7 @@ void EmuThread::run()
 {
     forever
     {
-        QMutexLocker locker(&emu_mutex);
+        FairMutexLock locker(emu_mutex);
         if (abort)
             return;
         else if (pause_status)
@@ -251,36 +252,36 @@ void EmuThread::run()
 
 void EmuThread::shutdown()
 {
-    QMutexLocker locker(&emu_mutex);
+    FairMutexLock locker(emu_mutex);
     abort = true;
 }
 
 void EmuThread::press_key(PAD_BUTTON button)
 {
-    QMutexLocker locker(&emu_mutex);
+    FairMutexLock locker(emu_mutex);
     e.press_button(button);
 }
 
 void EmuThread::release_key(PAD_BUTTON button)
 {
-    QMutexLocker locker(&emu_mutex);
+    FairMutexLock locker(emu_mutex);
     e.release_button(button);
 }
 
 void EmuThread::update_joystick(JOYSTICK joystick, JOYSTICK_AXIS axis, uint8_t val)
 {
-    QMutexLocker locker(&emu_mutex);
+    FairMutexLock locker(emu_mutex);
     e.update_joystick(joystick, axis, val);
 }
 
 void EmuThread::pause(PAUSE_EVENT event)
 {
-    QMutexLocker locker(&emu_mutex);
+    FairMutexLock locker(emu_mutex);
     pause_status |= 1 << event;
 }
 
 void EmuThread::unpause(PAUSE_EVENT event)
 {
-    QMutexLocker locker(&emu_mutex);
+    FairMutexLock locker(emu_mutex);
     pause_status &= ~(1 << event);
 }
